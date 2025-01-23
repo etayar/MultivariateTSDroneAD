@@ -1,2 +1,2 @@
-# pcst-anomaly-detection
-Multivariate-Time-Series transformer anomaly detection
+# mts-anomaly-detection
+Multivariate-Time-Series anomaly detection
