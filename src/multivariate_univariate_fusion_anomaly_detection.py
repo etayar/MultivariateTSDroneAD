@@ -9,37 +9,37 @@ class MultivariateUnivariateFuserAD(nn.Module):
     architecture.
 
     For Input Matrix (height and width) --> [batch_size, channels, height, width]
+    Model structure assumes: Input shape = (T X S) = (time-series length, sensors)
     """
 
-    def __init__(self, input_shape, batch_size):
+    def __init__(self, input_shape):
         super().__init__()
-        self.T = input_shape[0]
-        self.S = input_shape[1]
-        self.batch_size = batch_size
+        self.T = T
+        self.S = S
 
         # First Convolutional Layer
         self.conv1 = nn.Conv2d(
-            in_channels=1,             # Input channel (1 for single-channel input)
-            out_channels=T // int(T),  # Output feature maps = T / int(T)
-            kernel_size=(3, 3),        # Kernel size (example: 3x3, adjust if needed)
+            in_channels=1,             # Single input channel (for S x T matrix)
+            out_channels=T // int(T),  # T/int(T) feature maps
+            kernel_size=(3, 3),        # Kernel size (can be adjusted)
             stride=1,
-            padding=1                  # Maintain spatial dimensions
+            padding=1                  # Padding to maintain spatial dimensions
         )
 
         # First Pooling Layer
         self.pool1 = nn.MaxPool2d(
-            kernel_size=(2, 2),  # Pooling size 2x2
-            stride=(2, 2)        # Stride 2x2 for downsampling
+            kernel_size=(2, 2),  # Pooling size
+            stride=(2, 2)        # Stride reduces spatial dimensions
         )
 
         # Second Convolutional Layer
         self.conv2 = nn.Conv2d(
-            in_channels=T // int(T),  # Input channels from previous layer
-            out_channels=1,           # Output feature maps = 1
-            kernel_size=(3, 3),       # Kernel size (example: 3x3, adjust if needed)
+            in_channels=T // int(T),  # Input channels from the previous layer
+            out_channels=1,           # Output feature map with 1 channel
+            kernel_size=(3, 3),       # Kernel size
             stride=1,
-            padding=1                 # Maintain spatial dimensions
+            padding=1                 # Padding to maintain spatial dimensions
         )
 
-        # Global Max Pooling
+        # Global Max Pooling Layer
         self.global_pool = nn.AdaptiveMaxPool2d((T, 1))  # Global pooling to [T, 1]
