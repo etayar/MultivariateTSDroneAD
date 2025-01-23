@@ -45,8 +45,8 @@ def run_blackbox_decode_direct(input_file, output_file):
 
 if __name__ == '__main__':
     # Define input and output directories
-    input_dir = "/Users/etayar/PycharmProjects/MultivariateTSDroneAD/uav_raw_blackbox_data/"
-    output_dir = "/Users/etayar/PycharmProjects/MultivariateTSDroneAD/uav_blackbox_data_as_csv/"
+    input_dir = "/Users/etayar/PycharmProjects/MultivariateTSDroneAD/uav_data/uav_raw_blackbox_data/"
+    output_dir = "/Users/etayar/PycharmProjects/MultivariateTSDroneAD/uav_data/uav_blackbox_data_as_csv/"
 
     # Iterate through all files in the input directory
     for filename in os.listdir(input_dir):
