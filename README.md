@@ -1,2 +1,2 @@
 # pcst-anomaly-detection
-Patch-cross-sensors-transformer anomaly detection
+Multivariate-Time-Series transformer anomaly detection
