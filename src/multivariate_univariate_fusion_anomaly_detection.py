@@ -1,8 +1,16 @@
 import math
 from torch import nn
+from torchsummary import summary
+import numpy as np
 
 
-class ConvFuser1(nn.Module):
+# Define a common interface for CNN fusers
+class BaseConvFuser(nn.Module):
+    def forward(self, x):
+        raise NotImplementedError("Forward method must be implemented in subclasses")
+
+
+class ConvFuser1(BaseConvFuser):
 
     def __init__(self, input_shape):
         super().__init__()
@@ -56,34 +64,54 @@ class ConvFuser1(nn.Module):
         return x
 
 
-class ConvFuser2(nn.Module):
+class ConvFuser2(BaseConvFuser):
 
     def __init__(self, input_shape):
         super().__init__()
         self.T = input_shape[1]
         self.S = input_shape[0]
 
+    # Some CNN architecture
+
 
 
 class MultivariateTSAD(nn.Module):
     """
-    Given a multivariate time-series S X T, where T is the time-series length and S is the
-    number of sensors, MultivariateUnivariateFuser is a CNN that learns the hidden patterns
-    as well as flattening the input to a first order tensor, then passing it through a transformer
-    architecture.
+    Firs we apply a CNN architecture to fuse sensors in a latent space:
+        Given a multivariate time-series S X T, where T is the time-series length and S is the
+        number of sensors, MultivariateUnivariateFuser is a CNN that learns the hidden patterns
+        as well as flattening the input to a first order tensor, then passing it through a transformer
+        architecture.
 
-    For Input Matrix (height and width) --> [batch_size, channels, height, width]
-    Model structure assumes: Input shape = (S, T) = (sensors, time-series length)
+        For Input Matrix (height and width) --> [batch_size, channels, height, width]
+        Model structure assumes: Input shape = (S, T) = (sensors, time-series length)
+        Output: [batch_size, T, 1, 1]
+
+    Next we pass the CNN's output to a transformer architecture:
+        ...
     """
 
-    def __init__(self, conv_fuser: str = ''):
+    def __init__(self, input_shape, conv_fuser: BaseConvFuser):
         super().__init__()
+
+        self.conv_fuser = conv_fuser
+
+
+def build_model(mv_input, fuser_name: str = 'ConvFuser1'):
+    input_shape = mv_input.shape
+
+    # Choose a fuser dynamically
+    if fuser_name == 'ConvFuser1':
+        fuser = ConvFuser1(input_shape)
+    else:
+        fuser = ConvFuser2(input_shape)
+
+    # Create the MultivariateTSAD model
+    model = MultivariateTSAD(input_shape, conv_fuser=fuser)
 
 
 
 if __name__ == '__main__':
-    from torchsummary import summary
-    import numpy as np
 
     # Define input dimensions
     S, T = 64, 640
