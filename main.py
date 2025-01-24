@@ -1,3 +1,4 @@
+import os
 from src.training.train import Trainer
 from src.multivariate_univariate_fusion_anomaly_detection import build_model
 from torch.utils.data import DataLoader
@@ -14,55 +15,45 @@ def main():
     # Set device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # Dataloaders (replace with real datasets)
-    train_loader = DataLoader(...)  # Replace with real training DataLoader
-    val_loader = DataLoader(...)  # Replace with real validation DataLoader
+    # Path to the UAV dataset
+    data_path = "src/uav_data"  # Update this to match your dataset location
+    label_column = "label"  # Update this to the name of your label column
 
-    # Dynamically infer the input shape from a batch
-    sample_batch = next(iter(train_loader))  # Get one batch
-    inputs, _ = sample_batch  # Unpack inputs and labels
-    input_shape = inputs.shape[1:]  # Exclude batch size (e.g., [S, T])
+    # Load and split data into DataLoaders
+    train_loader, val_loader, test_loader = load_and_split_data(
+        data_path=data_path,
+        label_column=label_column,
+        batch_size=32
+    )
+
+    # Dynamically infer the input shape
+    sample_batch = next(iter(train_loader))
+    inputs, _ = sample_batch
+    input_shape = inputs.shape[1:]
 
     # Define model, optimizer, and criterion
     model = build_model(input_shape, fuser_name="ConvFuser1", transformer_variant="vanilla")
     model.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-    criterion = torch.nn.BCELoss()  # Binary cross-entropy loss
+    criterion = torch.nn.BCELoss()
 
-    # Learning rate scheduler (optional)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
-
-    # Initialize the Trainer
-    save_path = os.path.join("models", "best_model.pth")  # Save best model in a directory
-    os.makedirs(os.path.dirname(save_path), exist_ok=True)  # Ensure directory exists
-    trainer = Trainer(model, optimizer, criterion, scheduler, save_path)
-
-    # Train for multiple epochs and save metrics
-    num_epochs = 10
-    metrics = {"epoch": [], "val_loss": [], "precision": [], "recall": [], "f1_score": []}
-
-    for epoch in range(num_epochs):
-        print(f"Epoch {epoch + 1}/{num_epochs}")
-        trainer.train_one_epoch(train_loader, device)
-
-        # Evaluate on validation set
-        val_loss, precision, recall, f1 = trainer.evaluate(val_loader, device)
-
-        # Store metrics
-        metrics["epoch"].append(epoch + 1)
-        metrics["val_loss"].append(val_loss)
-        metrics["precision"].append(precision)
-        metrics["recall"].append(recall)
-        metrics["f1_score"].append(f1)
-
-    # Save metrics after training
+    # Define save paths
+    save_path = os.path.join("models", "best_model.pth")
     metrics_path = os.path.join("models", "training_metrics.json")
-    save_metrics(metrics, filename=metrics_path)
 
-    print("Training complete!")
-    print(f"Best model saved at {save_path}.")
-    print(f"Metrics saved at {metrics_path}.")
+    # Create Trainer with callbacks
+    trainer = Trainer(model, optimizer, criterion, save_path=save_path, patience=5)
+
+    # Train
+    trainer.train(train_loader, val_loader, device, epochs=10)
+
+    # Load the best model
+    model.load_state_dict(torch.load(save_path))
+
+    # Evaluate on the test set
+    test_loss, precision, recall, f1_score = trainer.evaluate(test_loader, device)
+    print(f"Test Set Results - Loss: {test_loss}, Precision: {precision}, Recall: {recall}, F1 Score: {f1_score}")
 
 
 if __name__ == "__main__":
