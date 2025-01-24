@@ -18,3 +18,5 @@ transformers==4.48.1
 performer-pytorch==1.1.4
 linformer==0.2.3
 torchinfo==1.8.0
+tqdm==4.67.1
+scikit-learn==1.6.1
