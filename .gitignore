@@ -3,4 +3,5 @@ venv/
 __pycache__/
 uav_data/uav_blackbox_data_as_csv/
 uav_data/uav_raw_blackbox_data/
+.idea/
 
