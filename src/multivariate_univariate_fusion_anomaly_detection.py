@@ -1,4 +1,5 @@
 import math
+import torch
 from torch import nn
 from torchsummary import summary
 import numpy as np
@@ -17,7 +18,7 @@ class ConvFuser1(BaseConvFuser):
         self.T = input_shape[1]
         self.S = input_shape[0]
 
-        sqrt_T = int(math.sqrt(T))
+        sqrt_T = int(math.sqrt(self.T))
 
         self.conv1 = nn.Conv2d(
             in_channels=1,
@@ -91,14 +92,32 @@ class MultivariateTSAD(nn.Module):
         ...
     """
 
-    def __init__(self, input_shape, conv_fuser: BaseConvFuser):
+    def __init__(self, conv_fuser: BaseConvFuser):
         super().__init__()
 
+        # Variables Fuse
         self.conv_fuser = conv_fuser
 
+        # todo: A placeholder. Replace with a transformer.
+        self.dnn = nn.Sequential(
+            nn.Linear(self.conv_fuser.T, 128),
+            nn.ReLU(),
+            nn.Linear(128, 1)
+        )
 
-def build_model(mv_input, fuser_name: str = 'ConvFuser1'):
-    input_shape = mv_input.shape
+
+    def forward(self, x):
+        # Pass through the CNN fuser
+        x = self.conv_fuser(x)
+
+        x = x.squeeze(-1).squeeze(-1)  # Ensure shape is [batch_size, T]
+
+        # Pass through the DNN
+        x = self.dnn(x)
+        return x
+
+
+def build_model(input_shape, fuser_name: str = 'ConvFuser1'):
 
     # Choose a fuser dynamically
     if fuser_name == 'ConvFuser1':
@@ -106,34 +125,25 @@ def build_model(mv_input, fuser_name: str = 'ConvFuser1'):
     else:
         fuser = ConvFuser2(input_shape)
 
-    # Create the MultivariateTSAD model
-    model = MultivariateTSAD(input_shape, conv_fuser=fuser)
+    return MultivariateTSAD(conv_fuser=fuser)
 
 
 
 if __name__ == '__main__':
 
     # Define input dimensions
-    S, T = 64, 640
+    S, T = 5, 16000
     input_mat = np.random.randn(S, T)
-    model = ConvFuser1(input_mat.shape)
+
+    # Convert input to PyTorch tensor
+    mv_input = torch.tensor(input_mat, dtype=torch.float32).unsqueeze(0)  # Add batch dimension
+
+    ad_model = build_model(mv_input[0].shape)
 
     # Print the model summary
-    summary(model, input_size=input_mat.shape)
+    summary(ad_model, input_size=input_mat.shape)
 
-
-    class MyClass:
-
-        def __init__(self, x):
-            self.x = x
-
-        def my_methode(self, y):
-            return self.x + y
-
-
-    obj = MyClass(10)
-    print(obj.__class__.__name__)  # Output: MyClass
-
-    print(type(obj).__name__)  # Output: MyClass
+    obj = ad_model
+    print(obj.__class__.__name__)
 
     exit()
