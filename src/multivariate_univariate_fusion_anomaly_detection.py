@@ -224,7 +224,13 @@ class LinearAggregator(nn.Module):
 class ConvAggregator(nn.Module):
     def __init__(self, d_model, kernel_size=3):
         super().__init__()
-        self.conv = nn.Conv1d(in_channels=d_model, out_channels=d_model, kernel_size=kernel_size, stride=1, padding=kernel_size // 2)
+        self.conv = nn.Conv1d(
+            in_channels=d_model,
+            out_channels=d_model,
+            kernel_size=kernel_size,
+            stride=1,
+            padding=kernel_size // 2
+        )
         self.global_pool = nn.AdaptiveMaxPool1d(1)  # Aggregate down to 1
 
     def forward(self, x):
@@ -381,9 +387,9 @@ class MultivariateTSAD(nn.Module):
 
 
 def build_model(
-        input_shape,
         model_config: dict
 ):
+    input_shape = model_config['input_shape']
     fuser_name = model_config['fuser_name']
     transformer_variant = model_config['transformer_variant']
     use_learnable_pe = model_config['use_learnable_pe']
@@ -417,28 +423,28 @@ def build_model(
         dropout=dropout
     )
 
-model_config = {
-    'fuser_name': 'ConvFuser1',
-    'transformer_variant': 'vanilla',  # Choose transformer variant
-    'use_learnable_pe': True,  # Use learnable positional encoding
-    'aggregator': 'attention',  # Use attention-based aggregation
-    'num_classes': 1,
-    'd_model': 256,
-    'nhead': 8,
-    'num_layers': 6,
-    'dropout': 0.15
-}
-
 
 if __name__ == '__main__':
     # Define input dimensions
     S, T = 64, 640  # Sensors and sequence length
     input_tens = torch.rand(1, S, T)  # [batch_size, S, T]
 
+    config = {
+        'input_shape': input_tens[0].shape,
+        'fuser_name': 'ConvFuser1',
+        'transformer_variant': 'vanilla',  # Choose transformer variant
+        'use_learnable_pe': True,  # Use learnable positional encoding
+        'aggregator': 'attention',  # Use attention-based aggregation
+        'num_classes': 12,
+        'd_model': 222,
+        'nhead': 2,
+        'num_layers': 2,
+        'dropout': 0.15
+    }
+
     # Build the model with specific configurations
     ad_model = build_model(
-        input_shape=input_tens[0].shape,  # Pass shape without batch dimension
-        model_config=model_config
+        model_config=config
     )
 
     # Test forward pass
