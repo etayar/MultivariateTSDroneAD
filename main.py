@@ -59,15 +59,18 @@ def main(model_config):
 
 
 if __name__ == "__main__":
-    config = {
-        'fuser_name': 'ConvFuser1',
-        'transformer_variant': 'vanilla',  # Choose transformer variant
-        'use_learnable_pe': True,  # Use learnable positional encoding
-        'aggregator': 'attention',  # Use attention-based aggregation
-        'num_classes': 1,
-        'd_model': 256,
-        'nhead': 8,
-        'num_layers': 6,
-        'dropout': 0.15
-    }
-    main(config)
+    configs = [
+        {
+            'fuser_name': 'ConvFuser1',
+            'transformer_variant': 'vanilla',  # Choose transformer variant
+            'use_learnable_pe': True,  # Use learnable positional encoding
+            'aggregator': 'attention',  # Use attention-based aggregation
+            'num_classes': 1,
+            'd_model': 256,
+            'nhead': 8,
+            'num_layers': 6,
+            'dropout': 0.15
+        }
+    ]
+    for config in configs:
+        main(config)
