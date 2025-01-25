@@ -443,10 +443,11 @@ if __name__ == '__main__':
         'transformer_variant': 'vanilla',  # Choose transformer variant
         'use_learnable_pe': True,  # Use learnable positional encoding
         'aggregator': 'attention',  # Use attention-based aggregation
+        'num_epochs': 50,  # This is used during training; it is included here to demonstrate the configuration structure
         'num_classes': 12,
-        'd_model': 222,
-        'nhead': 2,
-        'num_layers': 2,
+        'd_model': 256,
+        'nhead': 4,
+        'num_layers': 4,
         'dropout': 0.15
     }
 

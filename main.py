@@ -24,8 +24,8 @@ def main(model_config=None, checkpoint_path=None):
         random_state=42,
     )
 
-    # Initialize model and load checkpoint if provided
-    if checkpoint_path:  # If a checkpoint is provided, load it
+    # Initialize model
+    if checkpoint_path: # If a checkpoint is provided, due to previous training interruption, load it
         print(f"Loading model from checkpoint: {checkpoint_path}")
         checkpoint = torch.load(checkpoint_path, map_location=device)
 
@@ -44,9 +44,9 @@ def main(model_config=None, checkpoint_path=None):
         # Get the starting epoch from the checkpoint
         start_epoch = checkpoint["epoch"]
         print(f"Resuming training from epoch {start_epoch + 1}")
-    else:  # If no checkpoint is provided, start from scratch
-        # Dynamically infer input shape from a batch
-        sample_batch = next(iter(train_loader))
+    else:
+        # If no checkpoint is provided, start from scratch
+        sample_batch = next(iter(train_loader)) # Dynamically infer input shape from a batch
         inputs, _ = sample_batch
         input_shape = inputs.shape[1:]  # Exclude batch size
         model_config['input_shape'] = input_shape
@@ -70,12 +70,11 @@ def main(model_config=None, checkpoint_path=None):
     trainer = Trainer(model, optimizer, criterion, scheduler=scheduler)
 
     # Train the model (start from the saved epoch if resuming)
-    num_epochs = 20
     trainer.train(
         train_loader,
         val_loader,
         device,
-        epochs=num_epochs,
+        epochs=model_config['num_epochs'],
         config=model_config,
         start_epoch=start_epoch
     )
@@ -97,12 +96,13 @@ if __name__ == "__main__":
             'transformer_variant': 'vanilla',  # Choose transformer variant
             'use_learnable_pe': True,  # Use learnable positional encoding
             'aggregator': 'attention',  # Use attention-based aggregation
+            'num_epochs': 50,
             'num_classes': 1,
             'd_model': 256,
             'nhead': 8,
             'num_layers': 6,
             'dropout': 0.15
-        }
+        },
     ]
     for config in configs:
         main(config)
