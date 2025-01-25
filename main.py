@@ -12,52 +12,6 @@ def save_metrics(metrics_history, metrics_file = "training_metrics/training.json
         json.dump(metrics_history, f, indent=4)
 
 
-def main(model_config):
-    # Set device
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    # Path to the UAV dataset
-    data_path = "src/uav_data"  # Path to your dataset
-    label_column = "label"  # Column name containing labels in the CSV files
-
-    # Load data and create DataLoaders
-    train_loader, val_loader, test_loader = load_and_split_data(
-        data_path=data_path,
-        label_column=label_column,
-        batch_size=32,
-        random_state=42
-    )
-
-    # Dynamically infer input shape from a batch
-    sample_batch = next(iter(train_loader))
-    inputs, _ = sample_batch  # Unpack inputs and labels
-    input_shape = inputs.shape[1:]  # Exclude batch size
-    model_config['input_shape'] = input_shape
-
-    # Build model
-    model = build_model(model_config=model_config)
-    model.to(device)
-
-    # Define optimizer, loss, and scheduler
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-    criterion = torch.nn.BCELoss()  # Binary Cross-Entropy Loss
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
-
-    # Initialize Trainer
-    trainer = Trainer(model, optimizer, criterion, scheduler=scheduler)
-
-    # Train the model
-    num_epochs = 20
-    trainer.train(train_loader, val_loader, device, epochs=num_epochs, config=model_config)
-    metrics_history = trainer.metrics_history
-    save_metrics(metrics_history)
-
-    # Evaluate on the test set
-    test_loss, test_metrics = trainer.evaluate(test_loader, device)
-    print(f"Test Loss: {test_loss}, Test Metrics: {test_metrics}")
-    save_metrics(test_metrics, "training_metrics/test.json")
-
-
 def main(model_config=None, checkpoint_path=None):
     # Set device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
