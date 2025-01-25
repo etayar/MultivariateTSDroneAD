@@ -232,9 +232,9 @@ class MultivariateTSAD(nn.Module):
             self,
             conv_fuser: BaseConvFuser,
             transformer_variant="vanilla",
-            d_model=128,
-            nhead=4,
-            num_layers=2,
+            d_model=256,
+            nhead=8,
+            num_layers=6,
             dropout=0.15,
             use_learnable_pe=True,
             aggregator="attention"
@@ -312,6 +312,25 @@ class MultivariateTSAD(nn.Module):
         # Pass through fully connected layer
         x = self.fc(x)  # Shape: [batch_size, 1]
         return x
+
+    def predict(self, inputs, device="cpu"):
+        """
+        Perform inference on a batch of inputs.
+
+        Args:
+            inputs: Input tensor.
+            device: Device for inference ("cpu" or "cuda").
+
+        Returns:
+            predictions: Predicted outputs.
+        """
+        self.eval()
+        inputs = inputs.to(device)
+
+        with torch.no_grad():
+            outputs = self(inputs)
+            predictions = (outputs > 0.5).float()  # Binary classification
+        return predictions
 
 
 def build_model(
