@@ -78,11 +78,11 @@ class Trainer:
               f"Recall: {recall:.4f}, F1 Score: {f1:.4f}")
         return avg_loss, {"precision": precision, "recall": recall, "f1": f1}
 
-    def train(self, train_loader, val_loader, device, epochs):
+    def train(self, train_loader, val_loader, device, epochs, config, start_epoch=0):
         """
         Main training loop for multiple epochs.
         """
-        for epoch in range(epochs):
+        for epoch in range(start_epoch, epochs):  # Start from the given epoch
             print(f"\nEpoch {epoch + 1}/{epochs}")
 
             # Train one epoch
@@ -99,13 +99,42 @@ class Trainer:
                 **val_metrics
             })
 
-            # Check for improvement in validation loss
+            # Save the latest checkpoint
+            self.save_checkpoint(epoch + 1, config, val_loss, checkpoint_path="checkpoint_epoch.pth")
+
+            # Save the best model if validation loss improves
             if val_loss < self.best_val_loss:
-                print(f"Validation loss improved from {self.best_val_loss} to {val_loss}. Saving model...")
+                print(f"Validation loss improved from {self.best_val_loss} to {val_loss}. Saving best model...")
                 self.best_val_loss = val_loss
-                torch.save(self.model.state_dict(), self.save_path)
+                self.save_checkpoint(epoch + 1, config, val_loss, checkpoint_path="best_model.pth")
 
             # Step the scheduler, if provided
             if self.scheduler:
                 self.scheduler.step()
+
+    def save_model_with_config(self, config):
+        """
+        Save the model's state and configuration.
+        """
+        save_data = {
+            "model_state_dict": self.model.state_dict(),
+            "config": config,
+        }
+        torch.save(save_data, self.save_path)
+        print(f"Model and configuration saved to {self.save_path}")
+
+    def save_checkpoint(self, epoch, config, val_loss, checkpoint_path="checkpoint.pth"):
+        """
+        Save a checkpoint with model state, optimizer state, scheduler state, and other info.
+        """
+        checkpoint = {
+            "epoch": epoch,
+            "model_state_dict": self.model.state_dict(),
+            "optimizer_state_dict": self.optimizer.state_dict(),
+            "scheduler_state_dict": self.scheduler.state_dict() if self.scheduler else None,
+            "config": config,
+            "val_loss": val_loss,
+        }
+        torch.save(checkpoint, checkpoint_path)
+        print(f"Checkpoint saved to {checkpoint_path}")
 

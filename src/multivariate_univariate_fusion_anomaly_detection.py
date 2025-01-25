@@ -382,7 +382,15 @@ class MultivariateTSAD(nn.Module):
 
         with torch.no_grad():
             outputs = self(inputs)
-            predictions = (outputs > 0.5).float()  # Binary classification
+
+            # Determine prediction logic based on the number of classes
+            if self.fc[-1].activation.__class__.__name__ == "Sigmoid":  # Binary classification
+                predictions = (outputs > 0.5).float()
+            elif self.fc[-1].activation.__class__.__name__ == "Softmax":  # Multi-class classification
+                predictions = torch.argmax(outputs, dim=1)
+            else:
+                raise ValueError("Unknown activation function in the final layer.")
+
         return predictions
 
 
