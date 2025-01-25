@@ -6,9 +6,7 @@ We define a Trainer class that handles the full training loop, including:
     * Saving the model
     * Logging metrics
 """
-import json
 import torch
-from torch.nn import functional as F
 from tqdm import tqdm
 from sklearn.metrics import precision_score, recall_score, f1_score
 
