@@ -1,10 +1,8 @@
 import json
-from torch.utils.data import DataLoader
 from src.data.data_loader import load_and_split_data
 from src.training.train import Trainer
 from src.multivariate_univariate_fusion_anomaly_detection import build_model
 import torch
-from torch.utils.data import DataLoader
 
 
 def save_metrics(metrics_history, metrics_file = "training_metrics/training.json"):
@@ -14,7 +12,7 @@ def save_metrics(metrics_history, metrics_file = "training_metrics/training.json
         json.dump(metrics_history, f, indent=4)
 
 
-def main():
+def main(model_config):
     # Set device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -36,7 +34,7 @@ def main():
     input_shape = inputs.shape[1:]  # Exclude batch size
 
     # Build model
-    model = build_model(input_shape, fuser_name="ConvFuser1", transformer_variant="vanilla")
+    model = build_model(input_shape, model_config=model_config)
     model.to(device)
 
     # Define optimizer, loss, and scheduler
@@ -61,4 +59,15 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    config = {
+        'fuser_name': 'ConvFuser1',
+        'transformer_variant': 'vanilla',  # Choose transformer variant
+        'use_learnable_pe': True,  # Use learnable positional encoding
+        'aggregator': 'attention',  # Use attention-based aggregation
+        'num_classes': 1,
+        'd_model': 256,
+        'nhead': 8,
+        'num_layers': 6,
+        'dropout': 0.15
+    }
+    main(config)
