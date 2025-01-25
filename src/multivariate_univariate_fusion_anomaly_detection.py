@@ -97,14 +97,35 @@ def get_transformer_variant(
 ):
 
     if variant == "vanilla":
+        '''
+        Quadratic memory and time complexity with respect to sequence length (O(T²)), 
+        making it inefficient for very long sequences.
+        
+        Short to medium-length sequences (e.g., < 512 tokens).
+        '''
         encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=nhead, dropout=dropout)
         transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
 
     elif variant == "longformer":
+        '''
+        Handles very long sequences (e.g., 4K-8K tokens) efficiently.
+        Local attention reduces complexity to O(T × W) where W is the local window size, significantly improving scalability.
+        
+        Slightly less flexible in learning global relationships compared to full attention.
+        '''
         config = LongformerConfig(attention_window=512, hidden_size=d_model, num_attention_heads=nhead)
         transformer = LongformerModel(config)
 
     elif variant == "linformer":
+        '''
+        Uses a low-rank approximation of the attention matrix, reducing the complexity 
+        of self-attention from O(T²) to O(T × k), where k is the rank of the approximation.
+        
+        Drastically reduces memory requirements for self-attention.
+        Retains competitive performance on tasks with longer sequences.
+        
+        Approximation may lose some fine-grained global details, especially for tasks requiring high precision.
+        '''
         transformer = Linformer(
             dim=d_model,
             seq_len=max_len,
@@ -114,10 +135,20 @@ def get_transformer_variant(
         )
 
     elif variant == "performer":
+        '''
+        A transformer that uses kernelized attention to approximate full attention with linear complexity, 
+        scaling as O(T). It employs random feature maps for efficient computation.
+        
+        Approximation of attention may slightly degrade performance on certain tasks compared to full attention.
+        
+        Very long sequences (e.g., >10K tokens).
+        Time-series forecasting, long document processing, or real-time anomaly detection in massive datasets.
+        '''
         transformer = Performer(
             dim=d_model,
             depth=num_layers,
             heads=nhead,
+            dim_head=d_model // nhead,
             causal=False  # Non-causal for bidirectional attention
         )
 
@@ -207,25 +238,40 @@ class ConvAggregator(nn.Module):
         return x
 
 
+class ModularActivation(nn.Module):
+    def __init__(self, num_classes):
+        super().__init__()
+        self.activation = nn.Sigmoid() if num_classes == 1 else nn.Softmax(dim=1)
+
+    def forward(self, x):
+        return self.activation(x)
+
+
+
 class MultivariateTSAD(nn.Module):
     """
-    Firs we apply a CNN architecture to fuse sensors in a latent space:
-        Given a multivariate time-series S X T, where T is the time-series length and S is the
-        number of sensors, MultivariateUnivariateFuser is a CNN that learns the hidden patterns
-        as well as flattening the input to a first order tensor, then passing it through a transformer
-        architecture.
+    First, we apply a CNN architecture to fuse sensor data into a latent space:
+    Given a multivariate time-series of shape (S, T), where 𝑇 is the time-series length and
+    S is the number of sensors, the MultivariateUnivariateFuser CNN learns hidden patterns
+    and flattens the input into a first-order tensor. This tensor is then passed through a
+    transformer architecture for further processing.
 
-        For Input Matrix (height and width) --> [batch_size, channels, height, width]
-        Model structure assumes: Input shape = (S, T) = (sensors, time-series length)
-        Output: [batch_size, T, 1, 1]
+    Input Shape:
+    For the input matrix [batch_size, channels, height, width], the model assumes an input shape
+    of (S, T), where S is the number of sensors and T is the time-series length.
+    Output Shape:
+    After the CNN, the output shape is [batch_size, T, 1, 1].
 
-    Next we pass the CNN's output to a transformer architecture:
-        By adapting the CNN's output to the transformer architecture, we want to utilize the transformers
-        ability to capture long term dependencies and parallel computation. We used transformer
-        variants - Performer, Linformer and Longformer, designed to address the quadratic complexity of
-        the standard transformer's attention mechanism, particularly for long sequences.
+    Next, the CNN output is fed into a transformer architecture:
+    By adapting the CNN's output to the transformer architecture, we leverage the transformer's ability
+    to capture long-term dependencies and support parallel computation. For this purpose, we use transformer
+    variants like Performer, Linformer, and Longformer, which are optimized to address the quadratic
+    complexity of the standard transformer's attention mechanism, particularly for long sequences.
 
-    Finally, we passed the transformer's output through a fully connected layer and a binary classification end.
+    Finally, the transformer's output passes through a fully connected layer for classification:
+    The model ends with a modular classification layer, allowing for both binary and multi-class outputs.
+    This modularity ensures the model can be pre-trained on a different task or dataset and fine-tuned for
+    UAV anomaly detection.
     """
 
     def __init__(
@@ -237,7 +283,8 @@ class MultivariateTSAD(nn.Module):
             num_layers=6,
             dropout=0.15,
             use_learnable_pe=True,
-            aggregator="attention"
+            aggregator="attention",
+            num_classes=1  # Binary classification default for anomaly detection.
     ):
         super().__init__()
 
@@ -270,7 +317,7 @@ class MultivariateTSAD(nn.Module):
         if aggregator == "attention":
             self.aggregator = AttentionAggregator(d_model)
         elif aggregator == "linear":
-            self.aggregator = LinearAggregator(seq_len=max_len, d_model=d_model)
+            self.aggregator = LinearAggregator(seq_len=self.T, d_model=d_model)
         elif aggregator == "conv":
             self.aggregator = ConvAggregator(d_model)
         else:
@@ -280,8 +327,8 @@ class MultivariateTSAD(nn.Module):
         self.fc = nn.Sequential(
             nn.Linear(d_model, 128),
             nn.ReLU(),
-            nn.Linear(128, 1),  # Binary classification
-            nn.Sigmoid()  # Output probability
+            nn.Linear(128, num_classes),  # Output layer
+            ModularActivation(num_classes)  # Modular activation
         )
 
 
@@ -335,11 +382,17 @@ class MultivariateTSAD(nn.Module):
 
 def build_model(
         input_shape,
-        fuser_name="ConvFuser1",
-        transformer_variant="vanilla",
-        use_learnable_pe=False,
-        aggregator="attention"
+        model_config: dict
 ):
+    fuser_name = model_config['fuser_name']
+    transformer_variant = model_config['transformer_variant']
+    use_learnable_pe = model_config['use_learnable_pe']
+    aggregator = model_config['aggregator']
+    num_classes = model_config['num_classes']
+    d_model = model_config['d_model']
+    nhead = model_config['nhead']
+    num_layers = model_config['num_layers']
+    dropout = model_config['dropout']
 
     # Choose CNN fuser dynamically
     if fuser_name == "ConvFuser1":
@@ -356,8 +409,25 @@ def build_model(
         conv_fuser=fuser,
         transformer_variant=transformer_variant,
         use_learnable_pe=use_learnable_pe,
-        aggregator=aggregator
+        aggregator=aggregator,
+        num_classes=num_classes,
+        d_model=d_model,
+        nhead=nhead,
+        num_layers=num_layers,
+        dropout=dropout
     )
+
+model_config = {
+    'fuser_name': 'ConvFuser1',
+    'transformer_variant': 'vanilla',  # Choose transformer variant
+    'use_learnable_pe': True,  # Use learnable positional encoding
+    'aggregator': 'attention',  # Use attention-based aggregation
+    'num_classes': 1,
+    'd_model': 256,
+    'nhead': 8,
+    'num_layers': 6,
+    'dropout': 0.15
+}
 
 
 if __name__ == '__main__':
@@ -368,9 +438,7 @@ if __name__ == '__main__':
     # Build the model with specific configurations
     ad_model = build_model(
         input_shape=input_tens[0].shape,  # Pass shape without batch dimension
-        transformer_variant="vanilla",  # Choose transformer variant
-        use_learnable_pe=True,  # Use learnable positional encoding
-        aggregator="attention"  # Use attention-based aggregation
+        model_config=model_config
     )
 
     # Test forward pass
