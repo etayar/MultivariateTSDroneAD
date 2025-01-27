@@ -17,8 +17,8 @@ class ConvFuser1(BaseConvFuser):
 
     def __init__(self, input_shape):
         super().__init__()
-        self.T = input_shape[1]
-        self.S = input_shape[0]
+        self.T = input_shape[1]  # Time-series length
+        self.S = input_shape[0]  # Number of sensors
 
         sqrt_T = int(math.sqrt(self.T))
 
@@ -113,8 +113,8 @@ def get_transformer_variant(
         
         Slightly less flexible in learning global relationships compared to full attention.
         '''
-        config = LongformerConfig(attention_window=512, hidden_size=d_model, num_attention_heads=nhead)
-        transformer = LongformerModel(config)
+        long_former_config = LongformerConfig(attention_window=512, hidden_size=d_model, num_attention_heads=nhead)
+        transformer = LongformerModel(long_former_config)
 
     elif variant == "linformer":
         '''

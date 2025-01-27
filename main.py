@@ -1,7 +1,7 @@
 import json
 from src.data.data_loader import load_and_split_data
 from src.training.train import Trainer
-from src.multivariate_univariate_fusion_anomaly_detection import build_model
+from src.multivariate_fusion_anomaly_detection import build_model
 import torch
 
 
@@ -90,6 +90,8 @@ def main(model_config=None, checkpoint_path=None):
 
 
 if __name__ == "__main__":
+    # Add - tau to the architecture. tau if the T contraction-extraction (tau * T) for optimal length of the
+    # time-series representative introduced to the transformer by the CNN.
     configs = [
         {
             'fuser_name': 'ConvFuser1',
