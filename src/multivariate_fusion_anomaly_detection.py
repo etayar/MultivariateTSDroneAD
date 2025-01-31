@@ -15,10 +15,11 @@ class BaseConvFuser(nn.Module):
 
 class ConvFuser1(BaseConvFuser):
 
-    def __init__(self, input_shape):
+    def __init__(self, input_shape, time_scaler=1):
         super().__init__()
         self.T = input_shape[1]  # Time-series length
         self.S = input_shape[0]  # Number of sensors
+        self.time_scaler = time_scaler
 
         sqrt_T = int(math.sqrt(self.T))
 
@@ -36,14 +37,16 @@ class ConvFuser1(BaseConvFuser):
             stride=(2, 2)
         )
 
+        output_T = int(self.time_scaler * self.T)
+
         self.conv2 = nn.Conv2d(
             in_channels=self.T // sqrt_T,
-            out_channels=self.T,
+            out_channels=output_T,
             kernel_size=(3, 3),
             stride=(1, 2),
             padding=(1, 2)
         )
-        self.bn2 = nn.BatchNorm2d(self.T)
+        self.bn2 = nn.BatchNorm2d(output_T)
 
         self.gelu = nn.GELU()
 
@@ -398,6 +401,7 @@ def build_model(
         model_config: dict
 ):
     input_shape = model_config['input_shape']
+    time_scaler = model_config['time_scaler']
     fuser_name = model_config['fuser_name']
     transformer_variant = model_config['transformer_variant']
     use_learnable_pe = model_config['use_learnable_pe']
@@ -410,7 +414,7 @@ def build_model(
 
     # Choose CNN fuser dynamically
     if fuser_name == "ConvFuser1":
-        fuser = ConvFuser1(input_shape)
+        fuser = ConvFuser1(input_shape, time_scaler)
     elif fuser_name == "ConvFuser2":
         fuser = ConvFuser2(input_shape)
     elif fuser_name == "ConvFuser3":
@@ -439,6 +443,7 @@ if __name__ == '__main__':
 
     config = {
         'input_shape': input_tens[0].shape,
+        'time_scaler': 0.7966,  # time_scaler may be smaller than 1 for computational improvement or bigger than1 for higher representation of sensors temporal patterns.
         'fuser_name': 'ConvFuser1',
         'transformer_variant': 'vanilla',  # Choose transformer variant
         'use_learnable_pe': True,  # Use learnable positional encoding

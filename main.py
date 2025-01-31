@@ -97,7 +97,7 @@ if __name__ == "__main__":
             'fuser_name': 'ConvFuser1',
             'transformer_variant': 'vanilla',  # Choose transformer variant
             'use_learnable_pe': True,  # Use learnable positional encoding
-            'aggregator': 'attention',  # Use attention-based aggregation
+            'aggregator': 'attention',  # Use attention-based (time) aggregation
             'num_epochs': 50,
             'num_classes': 1,
             'd_model': 256,
