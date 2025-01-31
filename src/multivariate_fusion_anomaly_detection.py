@@ -443,7 +443,7 @@ if __name__ == '__main__':
 
     config = {
         'input_shape': input_tens[0].shape,
-        'time_scaler': 0.7966,  # time_scaler may be smaller than 1 for computational improvement or bigger than1 for higher representation of sensors temporal patterns.
+        'time_scaler': 0.7966,  # time_scaler may be smaller than 1 for computational improvement or bigger than 1 for higher representation of sensors temporal patterns.
         'fuser_name': 'ConvFuser1',
         'transformer_variant': 'vanilla',  # Choose transformer variant
         'use_learnable_pe': True,  # Use learnable positional encoding
