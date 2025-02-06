@@ -50,7 +50,7 @@ class Trainer:
     def evaluate(self, dataloader, device):
         """
         Evaluate the model on the validation set and compute metrics.
-        # TODO: Implement AUC-ROC calculations for imbalanced data set.
+        # TODO: Implement AUC-ROC calculations for imbalanced data sets.
         """
         self.model.eval()
         total_loss = 0
@@ -107,13 +107,13 @@ class Trainer:
             })
 
             # Save the latest checkpoint
-            self.save_checkpoint(epoch + 1, config, val_loss, checkpoint_path="checkpoint_epoch.pth")
+            self.save_checkpoint(epoch + 1, config, val_loss, checkpoint_path="models_metrics/checkpoint_epoch.pth")
 
             # Save the best model if validation loss improves
             if val_loss < self.best_val_loss:
                 print(f"Validation loss improved from {self.best_val_loss} to {val_loss}. Saving best model...")
                 self.best_val_loss = val_loss
-                self.save_checkpoint(epoch + 1, config, val_loss, checkpoint_path="best_model.pth")
+                self.save_checkpoint(epoch + 1, config, val_loss, checkpoint_path="models_metrics/best_model.pth")
 
             # Step the scheduler, if provided
             if self.scheduler:
@@ -130,7 +130,7 @@ class Trainer:
         torch.save(save_data, self.save_path)
         print(f"Model and configuration saved to {self.save_path}")
 
-    def save_checkpoint(self, epoch, config, val_loss, checkpoint_path="checkpoint.pth"):
+    def save_checkpoint(self, epoch, config, val_loss, checkpoint_path="models_metrics/checkpoint.pth"):
         """
         Save a checkpoint with model state, optimizer state, scheduler state, and other info.
         """

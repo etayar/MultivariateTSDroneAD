@@ -5,7 +5,7 @@ from src.multivariate_fusion_anomaly_detection import build_model
 import torch
 
 
-def save_metrics(metrics_history, metrics_file = "training_metrics/training.json"):
+def save_metrics(metrics_history, metrics_file = "src/data/models_metrics/training_metrics/training.json"):
 
     print(f"Saving metrics history to {metrics_file}...")
     with open(metrics_file, "w") as f:
@@ -86,7 +86,7 @@ def main(model_config=None, checkpoint_path=None):
     # Evaluate on the test set
     test_loss, test_metrics = trainer.evaluate(test_loader, device)
     print(f"Test Loss: {test_loss}, Test Metrics: {test_metrics}")
-    save_metrics(test_metrics, "training_metrics/test.json")
+    save_metrics(test_metrics, "src/data/models_metrics/training_metrics/test.json")
 
 
 if __name__ == "__main__":
