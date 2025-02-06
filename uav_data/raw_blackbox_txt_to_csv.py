@@ -110,6 +110,28 @@ def convert_uav_raw_blackbox_txt(input_d, output_d):
 
 
 if __name__ == '__main__':
+
+    data_path = "/Users/etayar/PycharmProjects/MultivariateTSDroneAD/uav_data/boaz_csv_flight_data/temp_loc/boaz_flight_1.01.csv"
+    df = pd.read_csv(data_path)
+    selected_fields = [
+        "IMUTemperature",  # IMU sensor temperature
+        "baroTemperature",  # Barometer temperature
+        "sens0Temp", "sens1Temp", "sens2Temp", "sens3Temp", "sens4Temp", "sens5Temp", "sens6Temp", "sens7Temp",  # Sensor temperatures
+        "escTemperature",  #  ESC (Electronic Speed Controller) temperature
+        "accSmooth[0]", "accSmooth[1]", "accSmooth[2]", # X, Y, Z axis acceleration
+        "accVib",   # Vibration from the accelerometer
+        "escRPM", # ESC RPM
+        "gyroADC[0]", # Roll rate
+        "gyroADC[1]", # Pitch rate
+        "gyroADC[2]", # Yaw rate
+        "attitude[0]", # absolute angle X axis  DO WE NEED ABSOLUT VALUES?
+        "attitude[1]", # absolute angle Y axis
+        "attitude[2]", # absolute angle Z axis
+        "amperage (A)" # Current in Amperes
+    ]
+
+    mvts = df[selected_fields]
+
     # Define input and output directories
     input_dir = "/Users/etayar/PycharmProjects/MultivariateTSDroneAD/uav_data/uav_raw_blackbox_data/"
     output_dir = "/Users/etayar/PycharmProjects/MultivariateTSDroneAD/uav_data/uav_blackbox_data_as_csv/"

@@ -47,6 +47,7 @@ class Trainer:
     def evaluate(self, dataloader, device):
         """
         Evaluate the model on the validation set and compute metrics.
+        # TODO: Implement AUC-ROC calculations for imbalanced data set.
         """
         self.model.eval()
         total_loss = 0
