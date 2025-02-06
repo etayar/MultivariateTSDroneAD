@@ -7,3 +7,5 @@ uav_data/uav_raw_blackbox_data/
 uav_data/boaz_csv_flight_data/
 uav_data/boaz_csv_flight_data/anomalous_data/
 uav_data/boaz_csv_flight_data/normal_data/
+uav_data/synthetic_data/anomalous_data/
+uav_data/synthetic_data/normal_data/

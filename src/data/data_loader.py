@@ -5,83 +5,79 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from sklearn.model_selection import train_test_split
 
-
 class UAVTimeSeriesDataset(Dataset):
     """
     Custom PyTorch Dataset for multivariate time-series UAV data.
-    Each sample is a patch of shape (S, T), with a corresponding label.
+    Each sample is a full patch file, with a corresponding label.
     """
 
-    def __init__(self, patches, labels):
+    def __init__(self, data, labels):
         """
         Args:
-            patches (numpy.ndarray): A list or array of shape (m, S, T), where m is the number of patches.
-            labels (numpy.ndarray): A list or array of shape (m,), representing the labels (0 or 1).
+            data (list): List of numpy arrays representing full patches.
+            labels (list): List of labels (0 or 1) corresponding to each patch.
         """
-        self.patches = torch.tensor(patches, dtype=torch.float32)
+        self.data = [torch.tensor(arr, dtype=torch.float32) for arr in data]
         self.labels = torch.tensor(labels, dtype=torch.float32)
 
     def __len__(self):
-        return len(self.patches)
+        return len(self.data)
 
     def __getitem__(self, idx):
-        return self.patches[idx], self.labels[idx]
+        return self.data[idx], self.labels[idx]
 
 
-def load_uav_time_series(data_path, patch_size_T, label_mapping):
+def load_uav_data(normal_path: str, failure_path: str):
     """
-    Loads UAV multivariate time-series data and organizes it into patches.
+    Loads UAV time-series data from two directories and assigns labels.
 
     Args:
-        data_path (str): Path to the directory containing UAV CSV files.
-        patch_size_T (int): The fixed time length T for each patch.
-        label_mapping (dict): A dictionary mapping each file name to its corresponding label (0 or 1).
+        normal_path (str): Directory containing normal flight patches (label 0).
+        failure_path (str): Directory containing anomalous flight patches (label 1).
 
     Returns:
-        patches (numpy.ndarray): Array of shape (m, S, T) containing the multivariate time-series patches.
-        labels (numpy.ndarray): Array of shape (m,) with corresponding labels (0 or 1).
+        data (list): List of numpy arrays containing full patches.
+        labels (list): List of corresponding labels (0 or 1).
     """
-    patches = []
+    data = []
     labels = []
 
-    for file in os.listdir(data_path):
+    # Load normal patches (label = 0)
+    for file in os.listdir(normal_path):
         if file.endswith(".csv"):
-            full_path = os.path.join(data_path, file)
+            full_path = os.path.join(normal_path, file)
             df = pd.read_csv(full_path)
 
-            # Assuming first column is timestamps, drop it if necessary
+            # Drop timestamp column if exists
             if "timestamp" in df.columns:
                 df = df.drop(columns=["timestamp"])
 
-            data_array = df.values.T  # Transpose to get (S, T) shape
+            data.append(df.values)  # Store full patch
+            labels.append(0)  # Normal label
 
-            # Ensure patch size fits within the available time steps
-            num_time_steps = data_array.shape[1]
-            num_patches = num_time_steps // patch_size_T  # Number of patches
+    # Load anomalous patches (label = 1)
+    for file in os.listdir(failure_path):
+        if file.endswith(".csv"):
+            full_path = os.path.join(failure_path, file)
+            df = pd.read_csv(full_path)
 
-            for i in range(num_patches):
-                patch = data_array[:, i * patch_size_T:(i + 1) * patch_size_T]  # Extract patch
-                patches.append(patch)
+            # Drop timestamp column if exists
+            if "timestamp" in df.columns:
+                df = df.drop(columns=["timestamp"])
 
-                # Assign the label based on the filename
-                if file in label_mapping:
-                    labels.append(label_mapping[file])
-                else:
-                    raise ValueError(f"Label for {file} is missing in label_mapping.")
+            data.append(df.values)  # Store full patch
+            labels.append(1)  # Anomalous label
 
-    patches = np.array(patches)  # Shape: (m, S, T)
-    labels = np.array(labels)  # Shape: (m,)
+    return data, labels
 
-    return patches, labels
 
-def load_and_split_time_series_data(data_path, patch_size_T, label_mapping, batch_size=32, random_state=42):
+def load_and_split_time_series_data(normal_path: str, failure_path: str, batch_size=32, random_state=42):
     """
-    Loads UAV time-series data, splits it into train/val/test sets, and returns DataLoaders.
+    Loads UAV time-series data from normal and failure directories, splits into train/val/test sets, and returns DataLoaders.
 
     Args:
-        data_path (str): Path to the directory containing UAV CSV files.
-        patch_size_T (int): The fixed time length T for each patch.
-        label_mapping (dict): A dictionary mapping each file name to its corresponding label (0 or 1).
+        normal_path (str): Directory containing normal flight patches (label 0).
+        failure_path (str): Directory containing anomalous flight patches (label 1).
         batch_size (int): Batch size for DataLoaders.
         random_state (int): Random seed for reproducibility.
 
@@ -89,11 +85,15 @@ def load_and_split_time_series_data(data_path, patch_size_T, label_mapping, batc
         train_loader, val_loader, test_loader: PyTorch DataLoaders for training, validation, and testing.
     """
     # Load UAV time-series patches and labels
-    patches, labels = load_uav_time_series(data_path, patch_size_T, label_mapping)
+    data, labels = load_uav_data(normal_path, failure_path)
+
+    # Convert lists to numpy arrays
+    data = np.array(data, dtype=object)  # Use dtype=object for variable-length sequences
+    labels = np.array(labels)
 
     # Split into training and temporary sets (validation + test)
     X_train, X_temp, y_train, y_temp = train_test_split(
-        patches, labels, test_size=0.3, random_state=random_state
+        data, labels, test_size=0.3, random_state=random_state
     )
 
     # Split temporary set into validation and test sets
@@ -115,24 +115,14 @@ def load_and_split_time_series_data(data_path, patch_size_T, label_mapping, batc
 
 
 if __name__ == '__main__':
-    data_path = "/path/to/your/csv/files"
-    patch_size_T = 50  # Define the length of each time-series patch
-    label_mapping = {
-        "flight_1.csv": 0,  # Normal
-        "flight_2.csv": 1,  # Structural Failure
-        "flight_3.csv": 0,
-        "flight_4.csv": 1
-    }
+
+    # synthetic_data # synthetic_data # synthetic_data # synthetic_data # synthetic_data # synthetic_data # synthetic_data
+    normal_data_path = "/Users/etayar/PycharmProjects/MultivariateTSDroneAD/uav_data/boaz_csv_flight_data/normal_data"
+    failure_data_path = "/Users/etayar/PycharmProjects/MultivariateTSDroneAD/uav_data/boaz_csv_flight_data/anomalous_data"
+    # synthetic_data # synthetic_data # synthetic_data # synthetic_data # synthetic_data # synthetic_data # synthetic_data
 
     train_loader, val_loader, test_loader = load_and_split_time_series_data(
-        data_path, patch_size_T, label_mapping, batch_size=32
+        normal_data_path, failure_data_path, batch_size=32
     )
-
-    # Example: Iterating through the DataLoader
-    for batch in train_loader:
-        X_batch, y_batch = batch
-        print("Batch X shape:", X_batch.shape)  # Expected: (batch_size, S, T)
-        print("Batch y shape:", y_batch.shape)  # Expected: (batch_size,)
-        break
 
     exit()
