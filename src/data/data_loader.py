@@ -17,7 +17,7 @@ class UAVTimeSeriesDataset(Dataset):
             data (list): List of numpy arrays representing full patches.
             labels (list): List of labels (0 or 1) corresponding to each patch.
         """
-        self.data = [torch.tensor(arr, dtype=torch.float32) for arr in data]
+        self.data = torch.tensor(np.array(data, dtype=np.float32))  # Ensures valid tensor
         self.labels = torch.tensor(labels, dtype=torch.float32)
 
     def __len__(self):
@@ -52,6 +52,9 @@ def load_uav_data(normal_path: str, failure_path: str):
             if "timestamp" in df.columns:
                 df = df.drop(columns=["timestamp"])
 
+            # Keep only numeric columns
+            df = df.select_dtypes(include=[np.number])
+
             data.append(df.values)  # Store full patch
             labels.append(0)  # Normal label
 
@@ -65,8 +68,16 @@ def load_uav_data(normal_path: str, failure_path: str):
             if "timestamp" in df.columns:
                 df = df.drop(columns=["timestamp"])
 
+            # Keep only numeric columns
+            df = df.select_dtypes(include=[np.number])
+
             data.append(df.values)  # Store full patch
             labels.append(1)  # Anomalous label
+
+    # Check if all shapes are the same
+    shapes = set(arr.shape for arr in data)
+    if len(shapes) > 1:
+        raise ValueError(f"Data patches have inconsistent shapes: {shapes}")
 
     return data, labels
 
@@ -74,21 +85,13 @@ def load_uav_data(normal_path: str, failure_path: str):
 def load_and_split_time_series_data(normal_path: str, failure_path: str, batch_size=32, random_state=42):
     """
     Loads UAV time-series data from normal and failure directories, splits into train/val/test sets, and returns DataLoaders.
-
-    Args:
-        normal_path (str): Directory containing normal flight patches (label 0).
-        failure_path (str): Directory containing anomalous flight patches (label 1).
-        batch_size (int): Batch size for DataLoaders.
-        random_state (int): Random seed for reproducibility.
-
-    Returns:
-        train_loader, val_loader, test_loader: PyTorch DataLoaders for training, validation, and testing.
     """
     # Load UAV time-series patches and labels
     data, labels = load_uav_data(normal_path, failure_path)
 
-    # Convert lists to numpy arrays
-    data = np.array(data, dtype=object)  # Use dtype=object for variable-length sequences
+    # Convert data into a proper NumPy array of float32
+    data = np.array(data, dtype=np.float32)  # Fix dtype issue
+
     labels = np.array(labels)
 
     # Split into training and temporary sets (validation + test)
@@ -115,11 +118,18 @@ def load_and_split_time_series_data(normal_path: str, failure_path: str, batch_s
 
 
 if __name__ == '__main__':
+    synthetic_data_querying = True
 
-    # synthetic_data # synthetic_data # synthetic_data # synthetic_data # synthetic_data # synthetic_data # synthetic_data
-    normal_data_path = "/Users/etayar/PycharmProjects/MultivariateTSDroneAD/uav_data/boaz_csv_flight_data/normal_data"
-    failure_data_path = "/Users/etayar/PycharmProjects/MultivariateTSDroneAD/uav_data/boaz_csv_flight_data/anomalous_data"
-    # synthetic_data # synthetic_data # synthetic_data # synthetic_data # synthetic_data # synthetic_data # synthetic_data
+    if synthetic_data_querying:
+        # synthetic_data # synthetic_data # synthetic_data # synthetic_data # synthetic_data # synthetic_data # synthetic_data
+        normal_data_path = "/Users/etayar/PycharmProjects/MultivariateTSDroneAD/uav_data/synthetic_data/anomalous_data"
+        failure_data_path = "/Users/etayar/PycharmProjects/MultivariateTSDroneAD/uav_data/synthetic_data/normal_data"
+        # synthetic_data # synthetic_data # synthetic_data # synthetic_data # synthetic_data # synthetic_data # synthetic_data
+    else:
+        # REAL DATA DIRECTORIES
+        normal_data_path = "/Users/etayar/PycharmProjects/MultivariateTSDroneAD/uav_data/boaz_csv_flight_data/normal_data"
+        failure_data_path = "/Users/etayar/PycharmProjects/MultivariateTSDroneAD/uav_data/boaz_csv_flight_data/anomalous_data"
+        # REAL DATA DIRECTORIES
 
     train_loader, val_loader, test_loader = load_and_split_time_series_data(
         normal_data_path, failure_data_path, batch_size=32
