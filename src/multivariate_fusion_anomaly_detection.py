@@ -248,9 +248,9 @@ class ConvAggregator(nn.Module):
 
 
 class ModularActivation(nn.Module):
-    def __init__(self, num_classes):
+    def __init__(self, class_neurons_num):
         super().__init__()
-        self.activation = nn.Sigmoid() if num_classes == 1 else nn.Softmax(dim=1)
+        self.activation = nn.Sigmoid() if class_neurons_num == 1 else nn.Softmax(dim=1)
 
     def forward(self, x):
         return self.activation(x)
@@ -293,7 +293,7 @@ class MultivariateTSAD(nn.Module):
             dropout=0.15,
             use_learnable_pe=True,
             aggregator="attention",
-            num_classes=1  # Binary classification default for anomaly detection.
+            class_neurons_num=1  # Binary classification default for anomaly detection.
     ):
         super().__init__()
 
@@ -336,8 +336,8 @@ class MultivariateTSAD(nn.Module):
         self.fc = nn.Sequential(
             nn.Linear(d_model, 128),
             nn.ReLU(),
-            nn.Linear(128, num_classes),  # Output layer
-            ModularActivation(num_classes)  # Modular activation
+            nn.Linear(128, class_neurons_num),  # Output layer
+            ModularActivation(class_neurons_num)  # Modular activation
         )
 
 
@@ -406,7 +406,7 @@ def build_model(
     transformer_variant = model_config['transformer_variant']
     use_learnable_pe = model_config['use_learnable_pe']
     aggregator = model_config['aggregator']
-    num_classes = model_config['num_classes']
+    class_neurons_num = model_config['class_neurons_num']
     d_model = model_config['d_model']
     nhead = model_config['nhead']
     num_layers = model_config['num_layers']
@@ -428,7 +428,7 @@ def build_model(
         transformer_variant=transformer_variant,
         use_learnable_pe=use_learnable_pe,
         aggregator=aggregator,
-        num_classes=num_classes,
+        class_neurons_num=class_neurons_num,
         d_model=d_model,
         nhead=nhead,
         num_layers=num_layers,
@@ -442,6 +442,8 @@ if __name__ == '__main__':
     input_tens = torch.rand(1, S, T)  # [batch_size, S, T]
 
     config = {
+        'normal_path': '',
+        'fault_path': '',
         'input_shape': input_tens[0].shape,
         'time_scaler': 0.7966,  # time_scaler may be smaller than 1 for computational improvement or bigger than 1 for higher representation of sensors temporal patterns.
         'fuser_name': 'ConvFuser1',
@@ -449,7 +451,7 @@ if __name__ == '__main__':
         'use_learnable_pe': True,  # Use learnable positional encoding
         'aggregator': 'attention',  # Use attention-based aggregation
         'num_epochs': 50,  # This is used during training; it is included here to demonstrate the configuration structure
-        'num_classes': 12,
+        'class_neurons_num': 12, # The number of classes, which is the last layer's number of neurons. 1 for binary.
         'd_model': 256,
         'nhead': 4,
         'num_layers': 4,

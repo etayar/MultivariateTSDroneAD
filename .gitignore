@@ -9,3 +9,5 @@ uav_data/boaz_csv_flight_data/anomalous_data/
 uav_data/boaz_csv_flight_data/normal_data/
 uav_data/synthetic_data/anomalous_data/
 uav_data/synthetic_data/normal_data/
+best_model.pth
+checkpoint_epoch.pth

@@ -1,5 +1,5 @@
 import json
-from src.data.data_loader import load_and_split_data
+from src.data.data_loader import load_and_split_time_series_data
 from src.training.train import Trainer
 from src.multivariate_fusion_anomaly_detection import build_model
 import torch
@@ -17,9 +17,9 @@ def main(model_config=None, checkpoint_path=None):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Load data
-    train_loader, val_loader, test_loader = load_and_split_data(
-        data_path="src/uav_data",
-        label_column="label",
+    train_loader, val_loader, test_loader = load_and_split_time_series_data(
+        normal_path=model_config['normal_path'],
+        failure_path=model_config['fault_path'],
         batch_size=32,
         random_state=42,
     )
@@ -61,7 +61,7 @@ def main(model_config=None, checkpoint_path=None):
         start_epoch = 0  # Start from the first epoch
 
     # Define criterion dynamically
-    if model_config["num_classes"] == 1:  # Binary classification
+    if model_config["class_neurons_num"] == 1:  # Binary classification
         criterion = torch.nn.BCELoss()
     else:  # Multi-class classification
         criterion = torch.nn.CrossEntropyLoss()
@@ -92,18 +92,33 @@ def main(model_config=None, checkpoint_path=None):
 if __name__ == "__main__":
     # Add - tau to the architecture. tau if the T contraction-extraction (tau * T) for optimal length of the
     # time-series representative introduced to the transformer by the CNN.
+
+    synthetic_data_querying = True
+
+    if synthetic_data_querying:
+        # synthetic_data paths
+        normal_path = '/Users/etayar/PycharmProjects/MultivariateTSDroneAD/uav_data/synthetic_data/normal_data'
+        fault_path = '/Users/etayar/PycharmProjects/MultivariateTSDroneAD/uav_data/synthetic_data/anomalous_data'
+        # synthetic_data paths
+    else:
+        normal_path = ''
+        fault_path = ''
+
     configs = [
         {
+            'normal_path': normal_path,
+            'fault_path': fault_path,
             'fuser_name': 'ConvFuser1',
             'transformer_variant': 'vanilla',  # Choose transformer variant
             'use_learnable_pe': True,  # Use learnable positional encoding
             'aggregator': 'attention',  # Use attention-based (time) aggregation
             'num_epochs': 50,
-            'num_classes': 1,
+            'class_neurons_num': 1,
             'd_model': 256,
             'nhead': 8,
             'num_layers': 6,
-            'dropout': 0.15
+            'dropout': 0.15,
+            'time_scaler': 0.678
         },
     ]
     for config in configs:

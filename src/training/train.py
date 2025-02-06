@@ -32,6 +32,9 @@ class Trainer:
             inputs, labels = batch
             inputs, labels = inputs.to(device), labels.to(device)
 
+            if isinstance(self.criterion, torch.nn.BCELoss):
+                labels = labels.unsqueeze(1)  # Only apply for BCE loss in binary classification.
+
             self.optimizer.zero_grad()
             outputs = self.model(inputs)
             loss = self.criterion(outputs, labels)
@@ -58,6 +61,9 @@ class Trainer:
             for batch in tqdm(dataloader, desc="Validating Batches"):
                 inputs, labels = batch
                 inputs, labels = inputs.to(device), labels.to(device)
+
+                if isinstance(self.criterion, torch.nn.BCELoss):
+                    labels = labels.unsqueeze(1)  # Only apply for BCE loss in binary classification.
 
                 outputs = self.model(inputs)
                 total_loss += self.criterion(outputs, labels).item()
