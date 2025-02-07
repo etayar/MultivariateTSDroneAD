@@ -56,7 +56,9 @@ def main(model_config=None, checkpoint_path=None):
 
         # Define optimizer and scheduler
         optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer, mode="min", patience=3, factor=0.1, verbose=True
+        )
 
         start_epoch = 0  # Start from the first epoch
 
@@ -76,7 +78,8 @@ def main(model_config=None, checkpoint_path=None):
         device,
         epochs=model_config['num_epochs'],
         config=model_config,
-        start_epoch=start_epoch
+        start_epoch=start_epoch,
+        patience=7
     )
 
     # Save training metrics
@@ -91,7 +94,7 @@ def main(model_config=None, checkpoint_path=None):
 
 if __name__ == "__main__":
     # Add - tau to the architecture. tau if the T contraction-extraction (tau * T) for optimal length of the
-    # time-series representative introduced to the transformer by the CNN.
+    # time-series representative introduced to the transformer by the CNN. - DONE: time_scaler
 
     synthetic_data_querying = True
 
