@@ -7,6 +7,7 @@ We define a Trainer class that handles the full training loop, including:
     * Logging metrics
 """
 import torch
+from networkx import config
 from tqdm import tqdm
 from sklearn.metrics import precision_score, recall_score, f1_score, roc_auc_score
 
@@ -42,12 +43,11 @@ class EarlyStopping:
 
 
 class Trainer:
-    def __init__(self, model, optimizer, criterion, scheduler=None, save_path="best_model.pth"):
+    def __init__(self, model, optimizer, criterion, scheduler=None):
         self.model = model
         self.optimizer = optimizer
         self.criterion = criterion
         self.scheduler = scheduler
-        self.save_path = save_path
         self.best_val_loss = float("inf")  # To track the best validation loss
         self.metrics_history = []  # Store metrics for all epochs
 
@@ -162,7 +162,7 @@ class Trainer:
 
             # Save latest checkpoint
             self.save_model_with_config(
-                epoch + 1, config, val_loss, path="src/data/models_metrics/checkpoint_epoch.pth"
+                epoch + 1, config, val_loss, path=config['checkpoint_epoch_path']
             )
 
             # Save the best model if validation loss improves
@@ -170,7 +170,7 @@ class Trainer:
                 print(f"Validation loss improved from {self.best_val_loss} to {val_loss}. Saving best model...")
                 self.best_val_loss = val_loss
                 self.save_model_with_config(
-                    epoch + 1, config, val_loss, path="src/data/models_metrics/best_model.pth"
+                    epoch + 1, config, val_loss, path=config['best_model_path']
                 )
 
             # Step the scheduler (if provided)
@@ -185,7 +185,7 @@ class Trainer:
                     epoch + 1,
                     config,
                     val_loss,
-                    path="src/data/models_metrics/best_model.pth",
+                    path=config['best_model_path'],
                     early_stopping_triggered=True
                 )
 

@@ -5,10 +5,10 @@ from src.multivariate_fusion_anomaly_detection import build_model
 import torch
 
 
-def save_metrics(metrics_history, metrics_file = "src/data/models_metrics/training_metrics/training.json"):
+def save_metrics(metrics_history, metrics_file_path):
 
-    print(f"Saving metrics history to {metrics_file}...")
-    with open(metrics_file, "w") as f:
+    print(f"Saving metrics history to {metrics_file_path}...")
+    with open(metrics_file_path, "w") as f:
         json.dump(metrics_history, f, indent=4)
 
 
@@ -84,12 +84,12 @@ def main(model_config=None, checkpoint_path=None):
 
     # Save training metrics
     metrics_history = trainer.metrics_history
-    save_metrics(metrics_history)
+    save_metrics(metrics_history, metrics_file_path=config['training_res'])
 
     # Evaluate on the test set
     test_loss, test_metrics = trainer.evaluate(test_loader, device)
     print(f"Test Loss: {test_loss}, Test Metrics: {test_metrics}")
-    save_metrics(test_metrics, "src/data/models_metrics/training_metrics/test.json")
+    save_metrics(test_metrics, metrics_file_path=config['test_res'])
 
 
 if __name__ == "__main__":
@@ -111,6 +111,10 @@ if __name__ == "__main__":
         {
             'normal_path': normal_path,
             'fault_path': fault_path,
+            'checkpoint_epoch_path': "src/data/models_metrics/checkpoint_epoch.pth",
+            'best_model_path': "src/data/models_metrics/best_model.pth",
+            'training_res': "src/data/models_metrics/training_metrics/training.json",
+            'test_res': "src/data/models_metrics/training_metrics/test.json",
             'fuser_name': 'ConvFuser1',
             'transformer_variant': 'vanilla',  # Choose transformer variant
             'use_learnable_pe': True,  # Use learnable positional encoding
