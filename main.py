@@ -115,12 +115,12 @@ if __name__ == "__main__":
             'best_model_path': "src/data/models_metrics/best_model.pth",
             'training_res': "src/data/models_metrics/training_metrics/training.json",
             'test_res': "src/data/models_metrics/training_metrics/test.json",
+            'class_neurons_num': 1,  # Depends on the classification task (1 for binary...)
             'fuser_name': 'ConvFuser1',
             'transformer_variant': 'vanilla',  # Choose transformer variant
             'use_learnable_pe': True,  # Use learnable positional encoding
             'aggregator': 'attention',  # Use attention-based (time) aggregation
             'num_epochs': 50,
-            'class_neurons_num': 1,
             'd_model': 256,
             'nhead': 8,  # # transformer heads
             'num_layers': 6,  # transformer layers
