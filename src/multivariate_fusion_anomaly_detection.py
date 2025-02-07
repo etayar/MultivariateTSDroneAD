@@ -343,8 +343,7 @@ class MultivariateTSAD(nn.Module):
 
     def forward(self, x):
         x = self.conv_fuser(x)  # Shape: [batch_size, T, 1, 1]
-        x = x.squeeze(-1).squeeze(-1)  # Squeeze: [batch_size, T]
-        x = x.unsqueeze(-1)  # Add singleton feature dimension: [batch_size, T, 1]
+        x = x.squeeze(-1)  # Squeeze: [batch_size, T, 1]
 
         # Map to embedding space and add positional encoding
         x = self.embedding(x)  # Shape: [batch_size, T, d_model]
