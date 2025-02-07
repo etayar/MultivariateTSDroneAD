@@ -7,7 +7,6 @@ We define a Trainer class that handles the full training loop, including:
     * Logging metrics
 """
 import torch
-from torch.distributed.launcher import elastic_launch
 from tqdm import tqdm
 from sklearn.metrics import precision_score, recall_score, f1_score, roc_auc_score
 
