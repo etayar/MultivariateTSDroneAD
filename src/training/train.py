@@ -180,9 +180,18 @@ class Trainer:
             # **Check for Early Stopping**
             if early_stopping.step(val_loss):
                 print(f"Early stopping triggered at epoch {epoch + 1}. Training stopped.")
-                break  # Stop training loop
+                # break  # Stop training loop
+                self.save_model_with_config(
+                    epoch + 1,
+                    config,
+                    val_loss,
+                    path="src/data/models_metrics/best_model.pth",
+                    early_stopping_triggered=True
+                )
 
-    def save_model_with_config(self, epoch, config, val_loss, path, save_usage='best_model'):
+    def save_model_with_config(
+            self, epoch, config, val_loss, path, save_usage='best_model', early_stopping_triggered=False
+    ):
         """
         Save a checkpoint with model state, optimizer state, scheduler state, and other info.
         """
@@ -193,6 +202,7 @@ class Trainer:
             "scheduler_state_dict": self.scheduler.state_dict() if self.scheduler else None,
             "config": config,
             "val_loss": val_loss,
+            "early_stopping_triggered": early_stopping_triggered
         }
         torch.save(model_config, path)
 
