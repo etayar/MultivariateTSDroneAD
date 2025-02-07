@@ -122,10 +122,10 @@ if __name__ == "__main__":
             'num_epochs': 50,
             'class_neurons_num': 1,
             'd_model': 256,
-            'nhead': 8,
-            'num_layers': 6,
+            'nhead': 8,  # # transformer heads
+            'num_layers': 6,  # transformer layers
             'dropout': 0.15,
-            'time_scaler': 0.678
+            'time_scaler': 0.678  # The portion of T for conv output time-series latent representative
         },
     ]
     for config in configs:
