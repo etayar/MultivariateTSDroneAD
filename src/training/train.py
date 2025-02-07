@@ -12,15 +12,15 @@ from sklearn.metrics import precision_score, recall_score, f1_score, roc_auc_sco
 
 
 class EarlyStopping:
-    def __init__(self, patience=5, min_delta=0):
+    def __init__(self, patience=5, es_threshold=1e-3):
         """
         Early stops training if validation loss doesn't improve after a given patience.
         Args:
             patience (int): How many epochs to wait before stopping if no improvement.
-            min_delta (float): Minimum change in validation loss to qualify as an improvement.
+            es_threshold (float): Minimum change in validation loss to qualify as an improvement.
         """
         self.patience = patience
-        self.min_delta = min_delta
+        self.es_threshold = es_threshold
         self.best_loss = float("inf")
         self.counter = 0
 
@@ -29,9 +29,12 @@ class EarlyStopping:
         Call this function after each epoch to check if training should stop.
         Returns True if training should stop, False otherwise.
         """
-        if val_loss < self.best_loss - self.min_delta:
+
+        if val_loss < self.best_loss - self.es_threshold:
             self.best_loss = val_loss
             self.counter = 0  # Reset counter if loss improves
+        elif val_loss < self.best_loss:
+            self.best_loss = val_loss  # Update best loss but don't reset patience if improvement is small
         else:
             self.counter += 1  # Increase counter if no improvement
 
