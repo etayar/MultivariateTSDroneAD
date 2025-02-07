@@ -353,13 +353,10 @@ class MultivariateTSAD(nn.Module):
         x = x.permute(1, 0, 2)
 
         # Pass through transformer
-        if isinstance(self.transformer, nn.TransformerEncoder):
-            x = self.transformer(x)  # Shape: [T, batch_size, d_model]
-        elif isinstance(self.transformer, LongformerModel):
-            x = self.transformer(x).last_hidden_state  # Shape: [batch_size, T, d_model]
+        x = self.transformer(x)   # Shape: [T, batch_size, d_model]
+        if isinstance(self.transformer, LongformerModel):
+            x = x.last_hidden_state  # Shape: [batch_size, T, d_model]
             x = x.permute(1, 0, 2)  # Match shape for aggregator: [T, batch_size, d_model]
-        elif isinstance(self.transformer, (Performer, Linformer)):
-            x = self.transformer(x)  # Shape: [T, batch_size, d_model]
 
         # Aggregate the sequence dimension using the specified aggregator
         x = self.aggregator(x)  # Shape: [batch_size, d_model]
