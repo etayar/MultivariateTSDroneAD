@@ -175,10 +175,7 @@ class Trainer:
 
             # Step the scheduler (if provided)
             if self.scheduler:
-                if isinstance(self.scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
-                    self.scheduler.step(val_loss)  # Adjust LR based on validation loss
-                else:
-                    self.scheduler.step()
+                self.scheduler.step(val_loss)  # Adjust LR based on validation loss
 
             # **Check for Early Stopping**
             if early_stopping.step(val_loss):
