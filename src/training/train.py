@@ -7,6 +7,7 @@ We define a Trainer class that handles the full training loop, including:
     * Logging metrics
 """
 import torch
+from torch.distributed.launcher import elastic_launch
 from tqdm import tqdm
 from sklearn.metrics import precision_score, recall_score, f1_score, roc_auc_score
 
@@ -161,16 +162,16 @@ class Trainer:
             })
 
             # Save latest checkpoint
-            self.save_checkpoint(
-                epoch + 1, config, val_loss, checkpoint_path="src/data/models_metrics/checkpoint_epoch.pth"
+            self.save_model_with_config(
+                epoch + 1, config, val_loss, path="src/data/models_metrics/checkpoint_epoch.pth"
             )
 
             # Save the best model if validation loss improves
             if val_loss < self.best_val_loss:
                 print(f"Validation loss improved from {self.best_val_loss} to {val_loss}. Saving best model...")
                 self.best_val_loss = val_loss
-                self.save_checkpoint(
-                    epoch + 1, config, val_loss, checkpoint_path="src/data/models_metrics/best_model.pth"
+                self.save_model_with_config(
+                    epoch + 1, config, val_loss, path="src/data/models_metrics/best_model.pth"
                 )
 
             # Step the scheduler (if provided)
@@ -185,22 +186,11 @@ class Trainer:
                 print(f"Early stopping triggered at epoch {epoch + 1}. Training stopped.")
                 break  # Stop training loop
 
-    def save_model_with_config(self, config):
-        """
-        Save the model's state and configuration.
-        """
-        save_data = {
-            "model_state_dict": self.model.state_dict(),
-            "config": config,
-        }
-        torch.save(save_data, self.save_path)
-        print(f"Model and configuration saved to {self.save_path}")
-
-    def save_checkpoint(self, epoch, config, val_loss, checkpoint_path):
+    def save_model_with_config(self, epoch, config, val_loss, path, save_usage='best_model'):
         """
         Save a checkpoint with model state, optimizer state, scheduler state, and other info.
         """
-        checkpoint = {
+        model_config = {
             "epoch": epoch,
             "model_state_dict": self.model.state_dict(),
             "optimizer_state_dict": self.optimizer.state_dict(),
@@ -208,6 +198,9 @@ class Trainer:
             "config": config,
             "val_loss": val_loss,
         }
-        torch.save(checkpoint, checkpoint_path)
-        print(f"Checkpoint saved to {checkpoint_path}")
+        torch.save(model_config, path)
+
+        save_type = 'Best model' if save_usage == 'best_model' else 'Checkpoint'
+        print(f"{save_type} saved to {path}")
+
 
