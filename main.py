@@ -1,4 +1,6 @@
+import os
 import json
+from datetime import datetime
 from src.data.data_loader import load_and_split_time_series_data
 from src.training.train import Trainer
 from src.multivariate_fusion_anomaly_detection import build_model
@@ -93,10 +95,8 @@ def main(model_config=None, checkpoint_path=None):
 
 
 if __name__ == "__main__":
-    # Add - tau to the architecture. tau if the T contraction-extraction (tau * T) for optimal length of the
-    # time-series representative introduced to the transformer by the CNN. - DONE: time_scaler
 
-    synthetic_data_querying = True
+    synthetic_data_querying = False
 
     if synthetic_data_querying:
         # synthetic_data paths
@@ -104,17 +104,29 @@ if __name__ == "__main__":
         fault_path = '/Users/etayar/PycharmProjects/MultivariateTSDroneAD/uav_data/synthetic_data/anomalous_data'
         # synthetic_data paths
     else:
-        normal_path = ''
-        fault_path = ''
+        normal_path = '/Users/etayar/PycharmProjects/MultivariateTSDroneAD/skab_data/normal_data'
+        fault_path = '/Users/etayar/PycharmProjects/MultivariateTSDroneAD/skab_data/anomalous_data'
+
+    # Get the current date in "YYYY-MM-DD" format
+    current_date = datetime.now().strftime("%Y-%m-%d")
+
+    # Create the directory for today's date if it doesn't exist
+    date_dir = os.path.join("src/data/models_metrics", current_date)
+    os.makedirs(date_dir, exist_ok=True)
+
+    checkpoint_path = os.path.join(date_dir, "checkpoint_epoch.pth")
+    best_model_path = os.path.join(date_dir, "best_model.pth")
+    training_res = os.path.join(date_dir, "training.json")
+    test_res = os.path.join(date_dir, "test.json")
 
     configs = [
         {
             'normal_path': normal_path,
             'fault_path': fault_path,
-            'checkpoint_epoch_path': "src/data/models_metrics/checkpoint_epoch.pth",
-            'best_model_path': "src/data/models_metrics/best_model.pth",
-            'training_res': "src/data/models_metrics/training_metrics/training.json",
-            'test_res': "src/data/models_metrics/training_metrics/test.json",
+            'checkpoint_epoch_path': checkpoint_path,
+            'best_model_path': best_model_path,
+            'training_res': training_res,
+            'test_res': test_res,
             'class_neurons_num': 1,  # Depends on the classification task (1 for binary...)
             'fuser_name': 'ConvFuser1',
             'transformer_variant': 'vanilla',  # Choose transformer variant
@@ -125,7 +137,7 @@ if __name__ == "__main__":
             'nhead': 8,  # # transformer heads
             'num_layers': 6,  # transformer layers
             'dropout': 0.15,
-            'time_scaler': 0.678  # The portion of T for conv output time-series latent representative
+            'time_scaler': 1  # The portion of T for conv output time-series latent representative
         },
     ]
     for config in configs:
