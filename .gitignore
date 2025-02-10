@@ -12,3 +12,10 @@ uav_data/synthetic_data/normal_data/
 best_model.pth
 checkpoint_epoch.pth
 src/data/models_metrics/
+skab_data/README.md
+skab_data/anomalous_data/
+skab_data/anomaly-free/
+skab_data/normal_data/
+skab_data/other/
+skab_data/valve1/
+skab_data/valve2/
