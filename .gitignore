@@ -19,3 +19,12 @@ skab_data/normal_data/
 skab_data/other/
 skab_data/valve1/
 skab_data/valve2/
+ServerMachineDataset/LICENSE
+ServerMachineDataset/interpretation_label/
+ServerMachineDataset/interpretation_label_csv/
+ServerMachineDataset/test/
+ServerMachineDataset/test_csv/
+ServerMachineDataset/test_label/
+ServerMachineDataset/test_label_csv/
+ServerMachineDataset/train/
+ServerMachineDataset/train_csv/
