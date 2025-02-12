@@ -86,7 +86,7 @@ class Trainer:
         print(f"Training Loss: {avg_loss}")
         return avg_loss
 
-    def evaluate(self, dataloader, device, prediction_threshold=0.5):
+    def evaluate(self, dataloader, device):
         """
         Evaluate the model on the validation set and compute metrics, including AUC-ROC.
         Handles binary, multi-class, and multi-label classification.
@@ -97,21 +97,18 @@ class Trainer:
         all_predictions = []
         all_probs = []  # Store probabilities for AUC-ROC
 
+        is_binary = isinstance(self.criterion, torch.nn.BCEWithLogitsLoss)
+        is_multi_label = model_config.get("multi_label", False)
+
         with torch.no_grad():
-            for batch in tqdm(dataloader, desc="Validating Batches"):
+            for batch in dataloader:
                 inputs, labels = batch
                 inputs, labels = inputs.to(device), labels.to(device)
 
-                if isinstance(self.criterion, torch.nn.BCEWithLogitsLoss):
-                    labels = labels.unsqueeze(1)  # Ensure labels have shape [batch_size, 1]
-
-                is_binary = isinstance(self.criterion, torch.nn.BCELoss)
-                is_multi_label = isinstance(self.criterion, torch.nn.BCEWithLogitsLoss)
-
                 if is_binary or is_multi_label:
-                    labels = labels.float()  # Ensure float type for BCE-based losses
+                    labels = labels.float()
                     if is_binary:
-                        labels = labels.unsqueeze(1)  # Reshape for BCE Loss
+                        labels = labels.unsqueeze(1)
 
                 outputs = self.model(inputs)
                 total_loss += self.criterion(outputs, labels).item()
@@ -119,10 +116,10 @@ class Trainer:
                 # Convert outputs to probabilities
                 if is_binary or is_multi_label:
                     probs = torch.sigmoid(outputs)  # Sigmoid for binary & multi-label
-                    predictions = (probs > prediction_threshold).float()  # Dynamic threshold for predictions
+                    predictions = (probs > 0.5).float()
                 else:
                     probs = torch.softmax(outputs, dim=1)  # Softmax for multi-class
-                    predictions = torch.argmax(probs, dim=1)  # Multi-class classification
+                    predictions = torch.argmax(probs, dim=1)
 
                 all_labels.append(labels.cpu())
                 all_predictions.append(predictions.cpu())
@@ -135,21 +132,25 @@ class Trainer:
 
         avg_loss = total_loss / len(dataloader)
 
-        # Compute evaluation metrics
+        # Choose correct averaging strategy
         if is_multi_label:
-            precision = precision_score(all_labels, all_predictions, average="samples", zero_division=0)
-            recall = recall_score(all_labels, all_predictions, average="samples", zero_division=0)
-            f1 = f1_score(all_labels, all_predictions, average="samples", zero_division=0)
-            auc_roc = roc_auc_score(all_labels, all_probs, average="macro")
+            avg_strategy = "samples"
         elif is_binary:
-            precision = precision_score(all_labels, all_predictions, average="binary", zero_division=0)
-            recall = recall_score(all_labels, all_predictions, average="binary", zero_division=0)
-            f1 = f1_score(all_labels, all_predictions, average="binary", zero_division=0)
-            auc_roc = roc_auc_score(all_labels, all_probs)
+            avg_strategy = "binary"
         else:
-            precision = precision_score(all_labels, all_predictions, average="weighted", zero_division=0)
-            recall = recall_score(all_labels, all_predictions, average="weighted", zero_division=0)
-            f1 = f1_score(all_labels, all_predictions, average="weighted", zero_division=0)
+            avg_strategy = "weighted"
+
+        # Compute evaluation metrics
+        precision = precision_score(all_labels, all_predictions, average=avg_strategy, zero_division=0)
+        recall = recall_score(all_labels, all_predictions, average=avg_strategy, zero_division=0)
+        f1 = f1_score(all_labels, all_predictions, average=avg_strategy, zero_division=0)
+
+        # Compute AUC-ROC
+        if is_binary:
+            auc_roc = roc_auc_score(all_labels, all_probs)
+        elif is_multi_label:
+            auc_roc = roc_auc_score(all_labels, all_probs, average="macro")
+        else:
             auc_roc = roc_auc_score(all_labels, all_probs, multi_class="ovr")
 
         print(f"Validation Loss: {avg_loss:.4f}, Precision: {precision:.4f}, Recall: {recall:.4f}, "

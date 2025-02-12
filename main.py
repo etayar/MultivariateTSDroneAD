@@ -171,7 +171,7 @@ if __name__ == "__main__":
             'd_model': 128,
             'nhead': 8,  # # transformer heads
             'num_layers': 4,  # transformer layers
-            'batch_size': 16,
+            'batch_size': 8,
             'dropout': 0.15,
             'time_scaler': 1,  # The portion of T for conv output time-series latent representative
             'multi_label': False,
