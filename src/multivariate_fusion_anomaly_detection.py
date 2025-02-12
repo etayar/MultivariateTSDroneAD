@@ -106,7 +106,7 @@ def get_transformer_variant(
         
         Short to medium-length sequences (e.g., < 512 tokens).
         '''
-        encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=nhead, dropout=dropout)
+        encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=nhead, dropout=dropout, batch_first=True)
         transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
 
     elif variant == "longformer":

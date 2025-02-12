@@ -109,8 +109,8 @@ if __name__ == "__main__":
         fault_path = '/Users/etayar/PycharmProjects/MultivariateTSDroneAD/uav_data/synthetic_data/anomalous_data'
         # synthetic_data paths
     else:
-        normal_path = '/Users/etayar/PycharmProjects/MultivariateTSDroneAD/skab_data/normal_data'
-        fault_path = '/Users/etayar/PycharmProjects/MultivariateTSDroneAD/skab_data/anomalous_data'
+        normal_path = '/Users/etayar/PycharmProjects/MultivariateTSDroneAD/ServerMachineDataset/normal_data'
+        fault_path = '/Users/etayar/PycharmProjects/MultivariateTSDroneAD/ServerMachineDataset/anomalous_data'
 
     # Get the current date in "YYYY-MM-DD" format
     current_date = datetime.now().strftime("%Y-%m-%d")
