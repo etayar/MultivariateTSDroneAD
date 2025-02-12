@@ -4,62 +4,92 @@ from typing import Dict
 import pandas as pd
 
 
-def parse_special_file(file_path: str) -> pd.DataFrame:
-    """
-    Parses the special file format where each line has:
-    'start-end:sensor1,sensor2,...' and converts it to a DataFrame.
-    """
-    data = []
+def has_overlap(i, sample_size, lower_bound, high_bound):
+    start1, end1 = i, i + sample_size  # First range
+    start2, end2 = lower_bound, high_bound  # Second range
 
-    with open(file_path, 'r') as file:
-        for line in file:
-            if ':' in line:  # Ensure correct format
-                range_part, sensors_part = line.strip().split(':')
-                sensors_list = sensors_part.split(',')
-                data.append({'anomalies_range': range_part, 'sensors': sensors_list})
-
-    return pd.DataFrame(data)
+    return max(start1, start2) <= min(end1, end2)
 
 
-def convert_txt_to_csv(from_paths_d: Dict[str, list]):
-    for dir_name, from_paths in from_paths_d.items():
-        for from_path in from_paths:
+def build_tagged_dataset(sensors_directories):
+    anomalous_data_path = "/Users/etayar/PycharmProjects/MultivariateTSDroneAD/ServerMachineDataset/anomalous_data"
+    normal_data_path = "/Users/etayar/PycharmProjects/MultivariateTSDroneAD/ServerMachineDataset/normal_data"
+
+    tagged_dataset_directories = [anomalous_data_path, normal_data_path]
+    for pth in tagged_dataset_directories:
+        # Check and create directory
+        if not os.path.exists(pth):
+            os.makedirs(pth)
+
+    sample_size = 10000
+
+    appropriate_labels = {
+        'train': Path("/Users/etayar/PycharmProjects/MultivariateTSDroneAD/ServerMachineDataset/interpretation_label"),
+        'test': Path("/Users/etayar/PycharmProjects/MultivariateTSDroneAD/ServerMachineDataset/test_label")
+    }
+
+    for dir in sensors_directories:
+
+        dir_name = dir.name
+        labels_path = appropriate_labels[dir_name]
+
+        # Get all files in the directory
+        sensors_pths = list(dir.glob("*.txt"))  # This gets all files and directories
+        labels_pths = list(labels_path.glob("*.txt"))
+
+        for i, sensor_pths in enumerate(sensors_pths):
+            machine = sensor_pths.name
+
             # Check if this file belongs to 'interpretation_label'
-            is_special_format = 'interpretation_label' in from_path
+            is_special_format = 'interpretation_label' == labels_path.name
 
             if is_special_format:
-                df = parse_special_file(from_path)
+                labels = parse_special_file(labels_pths[i])
+                anomalies_ranges = labels['anomalies_range']
+                ranges_list = [[int(x) for x in r.split('-')] for r in anomalies_ranges]
             else:
                 # Read the .txt file as a DataFrame (comma-separated)
-                df = pd.read_csv(from_path, header=None)  # No header in the input file
+                labels = pd.read_csv(labels_pths[i], header=None)  # No header in the input file
 
-            # Save the DataFrame as a CSV file
-            tmp = from_path.split('/')
-            save_dir = '/'.join(tmp[:-1]) + '_csv'
-            to_path = save_dir + '/' + tmp[-1].split('.')[0] + '.' + 'csv'
+            sensors = pd.read_csv(sensor_pths, header=None)
 
-            # Check and create directory
-            if not os.path.exists(save_dir):
-                os.makedirs(save_dir)
+            residual_df = pd.DataFrame()  # Store residual rows
 
-            df.to_csv(to_path, index=False, header=False)
+            idx = 0
+            for i in range(0, len(sensors), sample_size):  # Step by sample_size (no overlap)
+                sample_df = pd.concat(
+                    [residual_df, sensors.iloc[i: i + sample_size]]).copy()  # Add residual rows to next sample
 
-    print('Done')
+                if len(sample_df) < sample_size:
+                    residual_df = sample_df  # Save remaining rows for next iteration
+                    continue  # Skip incomplete samples for now
 
+                residual_df = pd.DataFrame()  # Reset residuals after using them
 
-def get_files_paths(directories: list):
+                # Determine label (1 if any anomaly is present in the sample)
+                if is_special_format:
+                    lower_bound = ranges_list[idx][0]
+                    high_bound = ranges_list[idx][1]
+                    label = has_overlap(i, sample_size, lower_bound, high_bound)
+                else:
+                    # Read the .txt file as a DataFrame (comma-separated)
+                    label = 1 if labels.iloc[i: i + sample_size].values.sum() > 0 else 0
 
-    from_paths_dict = {}
-
-    for directory in directories:
-        dir_name = directory.name
-        # Get all files matching the pattern "machine-*.txt"
-        from_paths_dict[dir_name] = [str(file) for file in directory.glob("machine-*.txt")]
-
-    return from_paths_dict
+                if label == 1:
+                    file_pth = anomalous_data_path + '/' + machine.split('.')[0] + '.csv'
+                    sample_df.to_csv(file_pth, index=False, header=False)
+                else:
+                    file_pth = normal_data_path + '/' + machine.split('.')[0] + '.csv'
+                    sample_df.to_csv(file_pth, index=False, header=False)
 
 
 if __name__ == '__main__':
+    sensors_dirs = [
+        Path("/Users/etayar/PycharmProjects/MultivariateTSDroneAD/ServerMachineDataset/test"),
+        Path("/Users/etayar/PycharmProjects/MultivariateTSDroneAD/ServerMachineDataset/train")
+    ]
+    build_tagged_dataset(sensors_dirs)
+
     # List of directories
     directories = [
         Path("/Users/etayar/PycharmProjects/MultivariateTSDroneAD/ServerMachineDataset/test_label"),
