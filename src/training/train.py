@@ -62,12 +62,19 @@ class Trainer:
             inputs, labels = batch
             inputs, labels = inputs.to(device), labels.to(device)
 
-            if isinstance(self.criterion, torch.nn.BCELoss):
-                labels = labels.unsqueeze(1)  # Only apply for BCE loss in binary classification.
+            # Ensure labels have the correct shape for BCE-based losses
+            is_binary = isinstance(self.criterion, torch.nn.BCELoss)
+            is_multi_label = isinstance(self.criterion, torch.nn.BCEWithLogitsLoss)
+
+            if is_binary or is_multi_label:
+                labels = labels.float()  # Ensure labels are float for BCE losses
+                if is_binary:
+                    labels = labels.unsqueeze(1)  # Reshape for binary classification
 
             self.optimizer.zero_grad()
             outputs = self.model(inputs)
-            loss = self.criterion(outputs, labels)
+
+            loss = self.criterion(outputs, labels)  # Compute loss
             loss.backward()
             self.optimizer.step()
 
@@ -77,10 +84,10 @@ class Trainer:
         print(f"Training Loss: {avg_loss}")
         return avg_loss
 
-    def evaluate(self, dataloader, device):
+    def evaluate(self, dataloader, device, prediction_threshold=0.5):
         """
         Evaluate the model on the validation set and compute metrics, including AUC-ROC.
-        Handles both binary and multi-class classification.
+        Handles binary, multi-class, and multi-label classification.
         """
         self.model.eval()
         total_loss = 0
@@ -93,44 +100,52 @@ class Trainer:
                 inputs, labels = batch
                 inputs, labels = inputs.to(device), labels.to(device)
 
-                # Check if it's a binary classification task (BCELoss is used)
                 is_binary = isinstance(self.criterion, torch.nn.BCELoss)
+                is_multi_label = isinstance(self.criterion, torch.nn.BCEWithLogitsLoss)
 
-                if is_binary:
-                    labels = labels.unsqueeze(1)  # Ensure correct shape for BCE Loss
+                if is_binary or is_multi_label:
+                    labels = labels.float()  # Ensure float type for BCE-based losses
+                    if is_binary:
+                        labels = labels.unsqueeze(1)  # Reshape for BCE Loss
 
                 outputs = self.model(inputs)
                 total_loss += self.criterion(outputs, labels).item()
 
-                # If binary, use sigmoid activation to get probabilities
-                if is_binary:
-                    probs = torch.sigmoid(outputs)
-                    predictions = (probs > 0.5).float()
+                # Convert outputs to probabilities
+                if is_binary or is_multi_label:
+                    probs = torch.sigmoid(outputs)  # Sigmoid for binary & multi-label
+                    predictions = (probs > prediction_threshold).float()  # Dynamic threshold for predictions
                 else:
                     probs = torch.softmax(outputs, dim=1)  # Softmax for multi-class
-                    predictions = torch.argmax(probs, dim=1)  # Get class with the highest probability
+                    predictions = torch.argmax(probs, dim=1)  # Multi-class classification
 
                 all_labels.append(labels.cpu())
                 all_predictions.append(predictions.cpu())
-                all_probs.append(probs.cpu())  # Store probabilities
+                all_probs.append(probs.cpu())
 
-        # Convert to NumPy arrays
+        # Convert lists to NumPy arrays
         all_labels = torch.cat(all_labels).numpy()
         all_predictions = torch.cat(all_predictions).numpy()
         all_probs = torch.cat(all_probs).numpy()
 
         avg_loss = total_loss / len(dataloader)
 
-        # Compute Precision, Recall, F1 Score
-        precision = precision_score(all_labels, all_predictions, average="weighted", zero_division=0)
-        recall = recall_score(all_labels, all_predictions, average="weighted", zero_division=0)
-        f1 = f1_score(all_labels, all_predictions, average="weighted", zero_division=0)
-
-        # Compute AUC-ROC
-        if is_binary:
+        # Compute evaluation metrics
+        if is_multi_label:
+            precision = precision_score(all_labels, all_predictions, average="samples", zero_division=0)
+            recall = recall_score(all_labels, all_predictions, average="samples", zero_division=0)
+            f1 = f1_score(all_labels, all_predictions, average="samples", zero_division=0)
+            auc_roc = roc_auc_score(all_labels, all_probs, average="macro")
+        elif is_binary:
+            precision = precision_score(all_labels, all_predictions, average="binary", zero_division=0)
+            recall = recall_score(all_labels, all_predictions, average="binary", zero_division=0)
+            f1 = f1_score(all_labels, all_predictions, average="binary", zero_division=0)
             auc_roc = roc_auc_score(all_labels, all_probs)
         else:
-            auc_roc = roc_auc_score(all_labels, all_probs, multi_class="ovr")  # One-vs-Rest for multi-class
+            precision = precision_score(all_labels, all_predictions, average="weighted", zero_division=0)
+            recall = recall_score(all_labels, all_predictions, average="weighted", zero_division=0)
+            f1 = f1_score(all_labels, all_predictions, average="weighted", zero_division=0)
+            auc_roc = roc_auc_score(all_labels, all_probs, multi_class="ovr")
 
         print(f"Validation Loss: {avg_loss:.4f}, Precision: {precision:.4f}, Recall: {recall:.4f}, "
               f"F1 Score: {f1:.4f}, AUC-ROC: {auc_roc:.4f}")
@@ -180,7 +195,7 @@ class Trainer:
             # **Check for Early Stopping**
             if early_stopping.step(val_loss):
                 print(f"Early stopping triggered at epoch {epoch + 1}. Training stopped.")
-                # break  # Stop training loop
+                # break  # Stop training loop  <--- Turned off, only save the model.
                 self.save_model_with_config(
                     epoch + 1,
                     config,

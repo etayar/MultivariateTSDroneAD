@@ -65,9 +65,14 @@ def main(model_config=None, checkpoint_path=None):
         start_epoch = 0  # Start from the first epoch
 
     # Define criterion dynamically
-    if model_config["class_neurons_num"] == 1:  # Binary classification
+    if model_config["class_neurons_num"] == 1 and not model_config.get("multi_label", False):
+        # Binary classification
         criterion = torch.nn.BCELoss()
-    else:  # Multi-class classification
+    elif model_config.get("multi_label", False):
+        # Multi-label classification (Sigmoid activation per class)
+        criterion = torch.nn.BCEWithLogitsLoss()  # Handles multi-label tasks efficiently
+    else:
+        # Multi-class classification (Softmax activation)
         criterion = torch.nn.CrossEntropyLoss()
 
     # Initialize Trainer
@@ -86,12 +91,12 @@ def main(model_config=None, checkpoint_path=None):
 
     # Save training metrics
     metrics_history = trainer.metrics_history
-    save_metrics(metrics_history, metrics_file_path=config['training_res'])
+    save_metrics(metrics_history, metrics_file_path=model_config['training_res'])
 
     # Evaluate on the test set
-    test_loss, test_metrics = trainer.evaluate(test_loader, device)
+    test_loss, test_metrics = trainer.evaluate(test_loader, device, prediction_threshold=model_config['prediction_threshold'])
     print(f"Test Loss: {test_loss}, Test Metrics: {test_metrics}")
-    save_metrics(test_metrics, metrics_file_path=config['test_res'])
+    save_metrics(test_metrics, metrics_file_path=model_config['test_res'])
 
 
 if __name__ == "__main__":
@@ -137,7 +142,9 @@ if __name__ == "__main__":
             'nhead': 8,  # # transformer heads
             'num_layers': 6,  # transformer layers
             'dropout': 0.15,
-            'time_scaler': 1  # The portion of T for conv output time-series latent representative
+            'time_scaler': 1,  # The portion of T for conv output time-series latent representative
+            'multi_label': False,
+            'prediction_threshold': 0.5
         },
     ]
     for config in configs:

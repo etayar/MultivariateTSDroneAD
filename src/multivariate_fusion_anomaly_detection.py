@@ -248,13 +248,17 @@ class ConvAggregator(nn.Module):
 
 
 class ModularActivation(nn.Module):
-    def __init__(self, class_neurons_num):
+    def __init__(self, class_neurons_num, multi_label=False):
         super().__init__()
-        self.activation = nn.Sigmoid() if class_neurons_num == 1 else nn.Softmax(dim=1)
+        self.multi_label = multi_label
+
+        if class_neurons_num == 1 or multi_label:
+            self.activation = nn.Sigmoid()  # Sigmoid for binary and multi-label
+        else:
+            self.activation = nn.Softmax(dim=1)  # Softmax for multi-class
 
     def forward(self, x):
         return self.activation(x)
-
 
 
 class MultivariateTSAD(nn.Module):
@@ -293,9 +297,12 @@ class MultivariateTSAD(nn.Module):
             dropout=0.15,
             use_learnable_pe=True,
             aggregator="attention",
-            class_neurons_num=1  # Binary classification default for anomaly detection.
+            class_neurons_num=1,  # Binary classification default for anomaly detection.
+            multi_label=False
     ):
         super().__init__()
+
+        self.multi_label = multi_label
 
         # Variables Fuse
         self.conv_fuser = conv_fuser
@@ -337,7 +344,7 @@ class MultivariateTSAD(nn.Module):
             nn.Linear(d_model, 128),
             nn.ReLU(),
             nn.Linear(128, class_neurons_num),  # Output layer
-            ModularActivation(class_neurons_num)  # Modular activation
+            ModularActivation(class_neurons_num, multi_label=multi_label)  # Modular activation
         )
 
 
@@ -365,13 +372,14 @@ class MultivariateTSAD(nn.Module):
         x = self.fc(x)  # Shape: [batch_size, 1]
         return x
 
-    def predict(self, inputs, device="cpu"):
+    def predict(self, inputs, device="cpu", threshold=0.5):  # Default threshold = 0.5 for binary too
         """
         Perform inference on a batch of inputs.
 
         Args:
             inputs: Input tensor.
             device: Device for inference ("cpu" or "cuda").
+            threshold: Threshold for classification (used in both binary and multi-label).
 
         Returns:
             predictions: Predicted outputs.
@@ -382,20 +390,18 @@ class MultivariateTSAD(nn.Module):
         with torch.no_grad():
             outputs = self(inputs)
 
-            # Determine prediction logic based on the number of classes
-            if self.fc[-1].activation.__class__.__name__ == "Sigmoid":  # Binary classification
-                predictions = (outputs > 0.5).float()
-            elif self.fc[-1].activation.__class__.__name__ == "Softmax":  # Multi-class classification
-                predictions = torch.argmax(outputs, dim=1)
+            if isinstance(self.fc[-1].activation, nn.Sigmoid):
+                predictions = (outputs > threshold).float()  # Use threshold dynamically for binary and multi-label
+            elif isinstance(self.fc[-1].activation, nn.Softmax):
+                predictions = torch.argmax(outputs, dim=1)  # Multi-class classification
             else:
                 raise ValueError("Unknown activation function in the final layer.")
 
         return predictions
 
 
-def build_model(
-        model_config: dict
-):
+def build_model(model_config: dict):
+
     input_shape = model_config['input_shape']
     time_scaler = model_config['time_scaler']
     fuser_name = model_config['fuser_name']
@@ -407,6 +413,7 @@ def build_model(
     nhead = model_config['nhead']
     num_layers = model_config['num_layers']
     dropout = model_config['dropout']
+    multi_label = model_config['multi_label']
 
     # Choose CNN fuser dynamically
     if fuser_name == "ConvFuser1":
@@ -428,7 +435,8 @@ def build_model(
         d_model=d_model,
         nhead=nhead,
         num_layers=num_layers,
-        dropout=dropout
+        dropout=dropout,
+        multi_label=multi_label
     )
 
 
@@ -451,7 +459,8 @@ if __name__ == '__main__':
         'd_model': 256,
         'nhead': 4,
         'num_layers': 4,
-        'dropout': 0.15
+        'dropout': 0.15,
+        'multi_label': False
     }
 
     # Build the model with specific configurations
