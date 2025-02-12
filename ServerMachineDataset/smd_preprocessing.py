@@ -11,6 +11,23 @@ def has_overlap(i, sample_size, lower_bound, high_bound):
     return max(start1, start2) <= min(end1, end2)
 
 
+def parse_special_file(file_path: str) -> pd.DataFrame:
+    """
+    Parses the special file format where each line has:
+    'start-end:sensor1,sensor2,...' and converts it to a DataFrame.
+    """
+    data = []
+
+    with open(file_path, 'r') as file:
+        for line in file:
+            if ':' in line:  # Ensure correct format
+                range_part, sensors_part = line.strip().split(':')
+                sensors_list = sensors_part.split(',')
+                data.append({'anomalies_range': range_part, 'sensors': sensors_list})
+
+    return pd.DataFrame(data)
+
+
 def build_tagged_dataset(sensors_directories):
     anomalous_data_path = "/Users/etayar/PycharmProjects/MultivariateTSDroneAD/ServerMachineDataset/anomalous_data"
     normal_data_path = "/Users/etayar/PycharmProjects/MultivariateTSDroneAD/ServerMachineDataset/normal_data"
@@ -21,7 +38,7 @@ def build_tagged_dataset(sensors_directories):
         if not os.path.exists(pth):
             os.makedirs(pth)
 
-    sample_size = 10000
+    sample_size = 5000
 
     appropriate_labels = {
         'train': Path("/Users/etayar/PycharmProjects/MultivariateTSDroneAD/ServerMachineDataset/interpretation_label"),
@@ -97,8 +114,5 @@ if __name__ == '__main__':
         Path("/Users/etayar/PycharmProjects/MultivariateTSDroneAD/ServerMachineDataset/train"),
         Path("/Users/etayar/PycharmProjects/MultivariateTSDroneAD/ServerMachineDataset/interpretation_label")
     ]
-    from_paths_dict = get_files_paths(directories)
-
-    convert_txt_to_csv(from_paths_dict)
 
     exit()

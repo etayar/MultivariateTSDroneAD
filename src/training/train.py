@@ -61,6 +61,9 @@ class Trainer:
             inputs, labels = batch
             inputs, labels = inputs.to(device), labels.to(device)
 
+            if isinstance(self.criterion, torch.nn.BCEWithLogitsLoss):
+                labels = labels.unsqueeze(1)  # Ensure labels have shape [batch_size, 1]
+
             # Ensure labels have the correct shape for BCE-based losses
             is_binary = isinstance(self.criterion, torch.nn.BCELoss)
             is_multi_label = isinstance(self.criterion, torch.nn.BCEWithLogitsLoss)
@@ -98,6 +101,9 @@ class Trainer:
             for batch in tqdm(dataloader, desc="Validating Batches"):
                 inputs, labels = batch
                 inputs, labels = inputs.to(device), labels.to(device)
+
+                if isinstance(self.criterion, torch.nn.BCEWithLogitsLoss):
+                    labels = labels.unsqueeze(1)  # Ensure labels have shape [batch_size, 1]
 
                 is_binary = isinstance(self.criterion, torch.nn.BCELoss)
                 is_multi_label = isinstance(self.criterion, torch.nn.BCEWithLogitsLoss)

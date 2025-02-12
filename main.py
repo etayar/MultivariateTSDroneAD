@@ -14,15 +14,53 @@ def save_metrics(metrics_history, metrics_file_path):
         json.dump(metrics_history, f, indent=4)
 
 
+def get_criterion(model_config, label_counts):
+    """
+    Dynamically computes class weights based on label distribution
+    and applies the correct loss function for binary, multi-class, and multi-label classification.
+
+    Args:
+        model_config (dict): Contains classification type information.
+        label_counts (dict): Dictionary with class frequencies {class_id: count}.
+
+    Returns:
+        torch loss function with computed class weights.
+    """
+
+    total_samples = sum(label_counts.values())  # Total dataset size
+    class_weights = {cls: total_samples / count for cls, count in label_counts.items()}  # Compute inverse frequency
+
+    # Convert to PyTorch tensor and sort by class index
+    class_weights_tensor = torch.tensor([class_weights[cls] for cls in sorted(label_counts.keys())])
+
+    # Apply correct loss function
+    if model_config["class_neurons_num"] == 1 and not model_config.get("multi_label", False):
+        # Binary classification (Single Sigmoid neuron)
+        num_negative = label_counts[0]  # Count of negative class
+        num_positive = label_counts[1]  # Count of positive class
+        pos_weight = torch.tensor([num_negative / num_positive])  # Adjust weight for imbalance
+        criterion = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)  # Binary class weighting
+
+    elif model_config.get("multi_label", False):
+        # Multi-label classification (Multiple independent Sigmoid neurons)
+        criterion = torch.nn.BCEWithLogitsLoss(pos_weight=class_weights_tensor)  # Per-class weighting
+
+    else:
+        # Multi-class classification (Softmax output)
+        criterion = torch.nn.CrossEntropyLoss(weight=class_weights_tensor)  # Apply class weights
+
+    return criterion
+
+
 def main(model_config=None, checkpoint_path=None):
     # Set device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Load data
-    train_loader, val_loader, test_loader = load_and_split_time_series_data(
+    train_loader, val_loader, test_loader, label_counts = load_and_split_time_series_data(
         normal_path=model_config['normal_path'],
         failure_path=model_config['fault_path'],
-        batch_size=32,
+        batch_size=model_config['batch_size'],
         random_state=42,
     )
 
@@ -65,15 +103,7 @@ def main(model_config=None, checkpoint_path=None):
         start_epoch = 0  # Start from the first epoch
 
     # Define criterion dynamically
-    if model_config["class_neurons_num"] == 1 and not model_config.get("multi_label", False):
-        # Binary classification
-        criterion = torch.nn.BCELoss()
-    elif model_config.get("multi_label", False):
-        # Multi-label classification (Sigmoid activation per class)
-        criterion = torch.nn.BCEWithLogitsLoss()  # Handles multi-label tasks efficiently
-    else:
-        # Multi-class classification (Softmax activation)
-        criterion = torch.nn.CrossEntropyLoss()
+    criterion = get_criterion(model_config, label_counts)
 
     # Initialize Trainer
     trainer = Trainer(model, optimizer, criterion, scheduler=scheduler)
@@ -134,13 +164,14 @@ if __name__ == "__main__":
             'test_res': test_res,
             'class_neurons_num': 1,  # Depends on the classification task (1 for binary...)
             'fuser_name': 'ConvFuser1',
-            'transformer_variant': 'vanilla',  # Choose transformer variant
+            'transformer_variant': 'performer',  # Choose transformer variant
             'use_learnable_pe': True,  # Use learnable positional encoding
             'aggregator': 'attention',  # Use attention-based (time) aggregation
             'num_epochs': 50,
-            'd_model': 256,
+            'd_model': 128,
             'nhead': 8,  # # transformer heads
-            'num_layers': 6,  # transformer layers
+            'num_layers': 4,  # transformer layers
+            'batch_size': 16,
             'dropout': 0.15,
             'time_scaler': 1,  # The portion of T for conv output time-series latent representative
             'multi_label': False,

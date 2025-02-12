@@ -4,6 +4,8 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset, DataLoader
 from sklearn.model_selection import train_test_split
+from collections import Counter
+
 
 class UAVTimeSeriesDataset(Dataset):
     """
@@ -84,15 +86,19 @@ def load_uav_data(normal_path: str, failure_path: str):
 
 def load_and_split_time_series_data(normal_path: str, failure_path: str, batch_size=32, random_state=42):
     """
-    Loads UAV time-series data from normal and failure directories, splits into train/val/test sets, and returns DataLoaders.
+    Loads UAV time-series data from normal and failure directories, splits into train/val/test sets,
+    returns DataLoaders along with class label counts.
     """
+
     # Load UAV time-series patches and labels
     data, labels = load_uav_data(normal_path, failure_path)
 
     # Convert data into a proper NumPy array of float32
-    data = np.array(data, dtype=np.float32)  # Fix dtype issue
-
+    data = np.array(data, dtype=np.float32)  # Ensure dtype consistency
     labels = np.array(labels)
+
+    # Count occurrences of each class **before splitting** for proper weighting
+    label_counts = Counter(labels)  # Returns a dictionary {class_0: count, class_1: count, ...}
 
     # Split into training and temporary sets (validation + test)
     X_train, X_temp, y_train, y_temp = train_test_split(
@@ -114,7 +120,7 @@ def load_and_split_time_series_data(normal_path: str, failure_path: str, batch_s
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
-    return train_loader, val_loader, test_loader
+    return train_loader, val_loader, test_loader, label_counts
 
 
 if __name__ == '__main__':
@@ -131,7 +137,7 @@ if __name__ == '__main__':
         failure_data_path = "/Users/etayar/PycharmProjects/MultivariateTSDroneAD/uav_data/boaz_csv_flight_data/anomalous_data"
         # REAL DATA DIRECTORIES
 
-    train_loader, val_loader, test_loader = load_and_split_time_series_data(
+    train_loader, val_loader, test_loader, label_counts = load_and_split_time_series_data(
         normal_data_path, failure_data_path, batch_size=32
     )
 

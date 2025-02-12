@@ -17,8 +17,8 @@ class ConvFuser1(BaseConvFuser):
 
     def __init__(self, input_shape, time_scaler=1):
         super().__init__()
-        self.T = input_shape[1]  # Time-series length
-        self.S = input_shape[0]  # Number of sensors
+        self.T = input_shape[0]  # Time-series length
+        self.S = input_shape[1]  # Number of sensors
         self.time_scaler = time_scaler
 
         sqrt_T = int(math.sqrt(self.T))
@@ -74,8 +74,8 @@ class ConvFuser2(BaseConvFuser):
 
     def __init__(self, input_shape):
         super().__init__()
-        self.T = input_shape[1]
-        self.S = input_shape[0]
+        self.T = input_shape[0]
+        self.S = input_shape[1]
 
     # Some CNN architecture
 
@@ -84,8 +84,8 @@ class ConvFuser3(BaseConvFuser):
 
     def __init__(self, input_shape):
         super().__init__()
-        self.T = input_shape[1]
-        self.S = input_shape[0]
+        self.T = input_shape[0]
+        self.S = input_shape[1]
 
     # Some CNN architecture
 
@@ -264,14 +264,14 @@ class ModularActivation(nn.Module):
 class MultivariateTSAD(nn.Module):
     """
     First, we apply a CNN architecture to fuse sensor data into a latent space:
-    Given a multivariate time-series of shape (S, T), where 𝑇 is the time-series length and
+    Given a multivariate time-series of shape (T, S), where 𝑇 is the time-series length and
     S is the number of sensors, the MultivariateUnivariateFuser CNN learns hidden patterns
     and flattens the input into a first-order tensor. This tensor is then passed through a
     transformer architecture for further processing.
 
     Input Shape:
     For the input matrix [batch_size, channels, height, width], the model assumes an input shape
-    of (S, T), where S is the number of sensors and T is the time-series length.
+    of (T, S), where S is the number of sensors and T is the time-series length.
     Output Shape:
     After the CNN, the output shape is [batch_size, T, 1, 1].
 
@@ -451,14 +451,15 @@ if __name__ == '__main__':
         'input_shape': input_tens[0].shape,
         'time_scaler': 0.7966,  # time_scaler may be smaller than 1 for computational improvement or bigger than 1 for higher representation of sensors temporal patterns.
         'fuser_name': 'ConvFuser1',
-        'transformer_variant': 'vanilla',  # Choose transformer variant
+        'transformer_variant': 'performer',  # Choose transformer variant
         'use_learnable_pe': True,  # Use learnable positional encoding
         'aggregator': 'attention',  # Use attention-based aggregation
         'num_epochs': 50,  # This is used during training; it is included here to demonstrate the configuration structure
         'class_neurons_num': 12, # The number of classes, which is the last layer's number of neurons. 1 for binary.
-        'd_model': 256,
+        'd_model': 128,
         'nhead': 4,
         'num_layers': 4,
+        'batch_size': 16,
         'dropout': 0.15,
         'multi_label': False
     }
