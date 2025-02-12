@@ -86,7 +86,7 @@ class Trainer:
         print(f"Training Loss: {avg_loss}")
         return avg_loss
 
-    def evaluate(self, dataloader, device):
+    def evaluate(self, dataloader, device, is_multi_label=False, prediction_threshold=0.5):
         """
         Evaluate the model on the validation set and compute metrics, including AUC-ROC.
         Handles binary, multi-class, and multi-label classification.
@@ -98,7 +98,6 @@ class Trainer:
         all_probs = []  # Store probabilities for AUC-ROC
 
         is_binary = isinstance(self.criterion, torch.nn.BCEWithLogitsLoss)
-        is_multi_label = model_config.get("multi_label", False)
 
         with torch.no_grad():
             for batch in dataloader:
@@ -116,7 +115,7 @@ class Trainer:
                 # Convert outputs to probabilities
                 if is_binary or is_multi_label:
                     probs = torch.sigmoid(outputs)  # Sigmoid for binary & multi-label
-                    predictions = (probs > 0.5).float()
+                    predictions = (probs > prediction_threshold).float()
                 else:
                     probs = torch.softmax(outputs, dim=1)  # Softmax for multi-class
                     predictions = torch.argmax(probs, dim=1)

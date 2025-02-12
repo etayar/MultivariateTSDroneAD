@@ -124,7 +124,12 @@ def main(model_config=None, checkpoint_path=None):
     save_metrics(metrics_history, metrics_file_path=model_config['training_res'])
 
     # Evaluate on the test set
-    test_loss, test_metrics = trainer.evaluate(test_loader, device, prediction_threshold=model_config['prediction_threshold'])
+    test_loss, test_metrics = trainer.evaluate(
+        test_loader,
+        device,
+        is_multi_label = model_config['multi_label'],
+        prediction_threshold=model_config['prediction_threshold']
+    )
     print(f"Test Loss: {test_loss}, Test Metrics: {test_metrics}")
     save_metrics(test_metrics, metrics_file_path=model_config['test_res'])
 
