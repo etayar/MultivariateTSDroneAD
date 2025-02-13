@@ -142,16 +142,16 @@ def main(model_config=None, checkpoint_path=None):
 
 if __name__ == "__main__":
 
-    synthetic_data_querying = False
-
-    if synthetic_data_querying:
-        # synthetic_data paths
-        normal_path = '/Users/etayar/PycharmProjects/MultivariateTSDroneAD/uav_data/synthetic_data/normal_data'
-        fault_path = '/Users/etayar/PycharmProjects/MultivariateTSDroneAD/uav_data/synthetic_data/anomalous_data'
-        # synthetic_data paths
+    # Detect if running in Google Colab
+    if "COLAB_GPU" in os.environ:
+        print("Running in Google Colab - Updating paths!")
+        base_path = "/content/drive/My Drive/My_PHD/My_First_Paper/MultivariateTSDroneAD/ServerMachineDataset/"
     else:
-        normal_path = '/Users/etayar/PycharmProjects/MultivariateTSDroneAD/ServerMachineDataset/normal_data'
-        fault_path = '/Users/etayar/PycharmProjects/MultivariateTSDroneAD/ServerMachineDataset/anomalous_data'
+        print("Running locally - Using Mac paths.")
+        base_path = "/Users/etayar/PycharmProjects/MultivariateTSDroneAD/ServerMachineDataset/"
+
+    normal_path = os.path.join(base_path, "normal_data")
+    fault_path = os.path.join(base_path, "anomalous_data")
 
     # Get the current date in "YYYY-MM-DD" format
     current_date = datetime.now().strftime("%Y-%m-%d")
