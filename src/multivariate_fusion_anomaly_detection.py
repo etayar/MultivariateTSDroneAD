@@ -446,22 +446,27 @@ if __name__ == '__main__':
     input_tens = torch.rand(1, S, T)  # [batch_size, S, T]
 
     config = {
-        'normal_path': '',
-        'fault_path': '',
-        'input_shape': input_tens[0].shape,
-        'time_scaler': 0.7966,  # time_scaler may be smaller than 1 for computational improvement or bigger than 1 for higher representation of sensors temporal patterns.
+        'input_shape': input_tens[0].shape, # <---- This doesn't exist in main file, it is configured in main()
+        'normal_path': 'normal_path',
+        'fault_path': 'fault_path',
+        'checkpoint_epoch_path': 'checkpoint_path',
+        'best_model_path': 'best_model_path',
+        'training_res': 'training_res',
+        'test_res': 'test_res',
+        'class_neurons_num': 1,  # Depends on the classification task (1 for binary...)
         'fuser_name': 'ConvFuser1',
         'transformer_variant': 'performer',  # Choose transformer variant
         'use_learnable_pe': True,  # Use learnable positional encoding
-        'aggregator': 'attention',  # Use attention-based aggregation
-        'num_epochs': 50,  # This is used during training; it is included here to demonstrate the configuration structure
-        'class_neurons_num': 12, # The number of classes, which is the last layer's number of neurons. 1 for binary.
-        'd_model': 128,
-        'nhead': 4,
-        'num_layers': 4,
+        'aggregator': 'attention',  # Use attention-based (time) aggregation
+        'num_epochs': 50,
+        'd_model': 256,
+        'nhead': 8,  # # transformer heads
+        'num_layers': 6,  # transformer layers
         'batch_size': 16,
         'dropout': 0.15,
-        'multi_label': False
+        'time_scaler': 1,  # The portion of T for conv output time-series latent representative
+        'multi_label': False,
+        'prediction_threshold': 0.5
     }
 
     # Build the model with specific configurations
