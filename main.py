@@ -104,6 +104,7 @@ def main(model_config=None, checkpoint_path=None):
 
     # Define criterion dynamically
     criterion = get_criterion(model_config, label_counts)
+    criterion.to(device)
 
     # Initialize Trainer
     trainer = Trainer(
