@@ -142,22 +142,26 @@ def main(model_config=None, checkpoint_path=None):
 
 if __name__ == "__main__":
 
+    # Get the current date in "YYYY-MM-DD" format
+    current_date = datetime.now().strftime("%Y-%m-%d")
+
     # Detect if running in Google Colab
     if "COLAB_GPU" in os.environ:
         print("Running in Google Colab - Updating paths!")
         base_path = "/content/drive/My Drive/My_PHD/My_First_Paper/MultivariateTSDroneAD/ServerMachineDataset/"
+
+        # Create the directory for today's date if it doesn't exist
+        date_dir = os.path.join("/content/drive/My Drive/My_PHD/My_First_Paper/MultivariateTSDroneAD/src/data/models_metrics", current_date)
     else:
         print("Running locally - Using Mac paths.")
         base_path = "/Users/etayar/PycharmProjects/MultivariateTSDroneAD/ServerMachineDataset/"
 
+        # Create the directory for today's date if it doesn't exist
+        date_dir = os.path.join("src/data/models_metrics", current_date)
+
     normal_path = os.path.join(base_path, "normal_data")
     fault_path = os.path.join(base_path, "anomalous_data")
 
-    # Get the current date in "YYYY-MM-DD" format
-    current_date = datetime.now().strftime("%Y-%m-%d")
-
-    # Create the directory for today's date if it doesn't exist
-    date_dir = os.path.join("src/data/models_metrics", current_date)
     os.makedirs(date_dir, exist_ok=True)
 
     checkpoint_path = os.path.join(date_dir, "checkpoint_epoch.pth")
@@ -178,7 +182,7 @@ if __name__ == "__main__":
             'transformer_variant': 'performer',  # Choose transformer variant
             'use_learnable_pe': True,  # Use learnable positional encoding
             'aggregator': 'attention',  # Use attention-based (time) aggregation
-            'num_epochs': 50,
+            'num_epochs': 2,
             'd_model': 128,
             'nhead': 4,  # # transformer heads
             'num_layers': 4,  # transformer layers
