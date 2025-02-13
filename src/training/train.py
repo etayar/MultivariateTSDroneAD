@@ -42,13 +42,28 @@ class EarlyStopping:
 
 
 class Trainer:
-    def __init__(self, model, optimizer, criterion, scheduler=None):
+    def __init__(
+            self,
+            model,
+            optimizer,
+            criterion,
+            scheduler=None,
+            is_binary=True,
+            is_multi_label=False,
+            prediction_threshold=0.5
+    ):
         self.model = model
         self.optimizer = optimizer
         self.criterion = criterion
         self.scheduler = scheduler
         self.best_val_loss = float("inf")  # To track the best validation loss
         self.metrics_history = []  # Store metrics for all epochs
+        self.is_multi_label = is_multi_label
+        self.is_binary =is_binary
+        self.prediction_threshold = prediction_threshold
+
+        if is_binary and is_multi_label:
+            raise ValueError("A model cannot be both binary and multi-label. Check configuration.")
 
     def train_one_epoch(self, dataloader, device):
         """
@@ -61,17 +76,14 @@ class Trainer:
             inputs, labels = batch
             inputs, labels = inputs.to(device), labels.to(device)
 
-            if isinstance(self.criterion, torch.nn.BCEWithLogitsLoss):
-                labels = labels.unsqueeze(1)  # Ensure labels have shape [batch_size, 1]
+            # Ensure binary classification labels have the correct shape
+            if self.is_binary and labels.dim() == 1:
+                labels = labels.unsqueeze(1)  # Fix for binary classification ONLY
 
-            # Ensure labels have the correct shape for BCE-based losses
-            is_binary = isinstance(self.criterion, torch.nn.BCELoss)
-            is_multi_label = isinstance(self.criterion, torch.nn.BCEWithLogitsLoss)
-
-            if is_binary or is_multi_label:
-                labels = labels.float()  # Ensure labels are float for BCE losses
-                if is_binary:
-                    labels = labels.unsqueeze(1)  # Reshape for binary classification
+            if self.is_binary:
+                if labels.dim() == 1:
+                    labels = labels.unsqueeze(1)  # Ensure shape is [batch_size, 1]
+                labels = labels.float()  # Convert to float for BCE loss
 
             self.optimizer.zero_grad()
             outputs = self.model(inputs)
@@ -86,7 +98,7 @@ class Trainer:
         print(f"Training Loss: {avg_loss}")
         return avg_loss
 
-    def evaluate(self, dataloader, device, is_multi_label=False, prediction_threshold=0.5):
+    def evaluate(self, dataloader, device):
         """
         Evaluate the model on the validation set and compute metrics, including AUC-ROC.
         Handles binary, multi-class, and multi-label classification.
@@ -97,25 +109,27 @@ class Trainer:
         all_predictions = []
         all_probs = []  # Store probabilities for AUC-ROC
 
-        is_binary = isinstance(self.criterion, torch.nn.BCEWithLogitsLoss)
-
         with torch.no_grad():
             for batch in dataloader:
                 inputs, labels = batch
                 inputs, labels = inputs.to(device), labels.to(device)
 
-                if is_binary or is_multi_label:
-                    labels = labels.float()
-                    if is_binary:
-                        labels = labels.unsqueeze(1)
+                # Ensure binary classification labels have the correct shape
+                if self.is_binary and labels.dim() == 1:
+                    labels = labels.unsqueeze(1)  # Fix for binary classification ONLY
+
+                if self.is_binary:
+                    if labels.dim() == 1:
+                        labels = labels.unsqueeze(1)  # Ensure shape is [batch_size, 1]
+                    labels = labels.float()  # Convert to float for BCE loss
 
                 outputs = self.model(inputs)
                 total_loss += self.criterion(outputs, labels).item()
 
                 # Convert outputs to probabilities
-                if is_binary or is_multi_label:
+                if self.is_binary or self.is_multi_label:
                     probs = torch.sigmoid(outputs)  # Sigmoid for binary & multi-label
-                    predictions = (probs > prediction_threshold).float()
+                    predictions = (probs > self.prediction_threshold).float()
                 else:
                     probs = torch.softmax(outputs, dim=1)  # Softmax for multi-class
                     predictions = torch.argmax(probs, dim=1)
@@ -132,9 +146,9 @@ class Trainer:
         avg_loss = total_loss / len(dataloader)
 
         # Choose correct averaging strategy
-        if is_multi_label:
+        if self.is_multi_label:
             avg_strategy = "samples"
-        elif is_binary:
+        elif self.is_binary:
             avg_strategy = "binary"
         else:
             avg_strategy = "weighted"
@@ -145,9 +159,9 @@ class Trainer:
         f1 = f1_score(all_labels, all_predictions, average=avg_strategy, zero_division=0)
 
         # Compute AUC-ROC
-        if is_binary:
+        if self.is_binary:
             auc_roc = roc_auc_score(all_labels, all_probs)
-        elif is_multi_label:
+        elif self.is_multi_label:
             auc_roc = roc_auc_score(all_labels, all_probs, average="macro")
         else:
             auc_roc = roc_auc_score(all_labels, all_probs, multi_class="ovr")

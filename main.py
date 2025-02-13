@@ -106,7 +106,15 @@ def main(model_config=None, checkpoint_path=None):
     criterion = get_criterion(model_config, label_counts)
 
     # Initialize Trainer
-    trainer = Trainer(model, optimizer, criterion, scheduler=scheduler)
+    trainer = Trainer(
+        model,
+        optimizer,
+        criterion,
+        scheduler=scheduler,
+        is_binary=model_config["class_neurons_num"] == 1 and not model_config['multi_label'],
+        is_multi_label=model_config['multi_label'],
+        prediction_threshold=model_config['prediction_threshold']
+    )
 
     # Train the model (start from the saved epoch if resuming)
     trainer.train(
@@ -126,9 +134,7 @@ def main(model_config=None, checkpoint_path=None):
     # Evaluate on the test set
     test_loss, test_metrics = trainer.evaluate(
         test_loader,
-        device,
-        is_multi_label = model_config['multi_label'],
-        prediction_threshold=model_config['prediction_threshold']
+        device
     )
     print(f"Test Loss: {test_loss}, Test Metrics: {test_metrics}")
     save_metrics(test_metrics, metrics_file_path=model_config['test_res'])
@@ -174,7 +180,7 @@ if __name__ == "__main__":
             'aggregator': 'attention',  # Use attention-based (time) aggregation
             'num_epochs': 50,
             'd_model': 128,
-            'nhead': 8,  # # transformer heads
+            'nhead': 4,  # # transformer heads
             'num_layers': 4,  # transformer layers
             'batch_size': 8,
             'dropout': 0.15,
