@@ -96,7 +96,11 @@ def load_multilabel_data(pth: str):
 
 def load_uea_binary_multivariate_ts():
     # Load CSV file
-    df = pd.read_csv("/Users/etayar/PycharmProjects/MultivariateTSDroneAD/uea_datasets/Heartbeat.csv")
+    if "COLAB_GPU" in os.environ:
+        df = pd.read_csv(
+            "/content/drive/My Drive/My_PHD/My_First_Paper/MultivariateTSDroneAD/uea_datasets/Heartbeat.csv")
+    else:
+        df = pd.read_csv("/Users/etayar/PycharmProjects/MultivariateTSDroneAD/uea_datasets/Heartbeat.csv")
 
     # Convert back to original shape
     X = df.iloc[:, :-1].values.reshape(-1, 61, 405)
