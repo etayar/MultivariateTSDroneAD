@@ -117,8 +117,9 @@ def main(model_config=None, checkpoint_path=None):
         optimizer,
         criterion,
         scheduler=scheduler,
-        is_binary=model_config["class_neurons_num"] == 1 and not model_config['multi_label'],
+        is_binary=model_config['binary'],
         is_multi_label=model_config['multi_label'],
+        is_multi_class=model_config['multi_class'],
         prediction_threshold=model_config['prediction_threshold']
     )
 
@@ -182,6 +183,10 @@ if __name__ == "__main__":
     training_res = os.path.join(date_dir, "training.json")
     test_res = os.path.join(date_dir, "test.json")
 
+    binary = True if not multilabel_path and not multiclass_path else False
+    multi_label = True if multilabel_path else False
+    multi_class = True if multilabel_path else False
+
     configs = [
         {
             'normal_path': normal_path,
@@ -192,19 +197,21 @@ if __name__ == "__main__":
             'best_model_path': best_model_path,
             'training_res': training_res,
             'test_res': test_res,
+            'binary': binary,
+            'multi_label': multi_label,
+            'multi_class': multi_class,
             'class_neurons_num': 1,  # Depends on the classification task (1 for binary...)
             'fuser_name': 'ConvFuser1',
-            'transformer_variant': 'performer',  # Choose transformer variant
+            'transformer_variant': 'vanilla',  # Choose transformer variant
             'use_learnable_pe': True,  # Use learnable positional encoding
             'aggregator': 'attention',  # Use attention-based (time) aggregation
             'num_epochs': 50,
-            'd_model': 128,
+            'd_model': 256,
             'nhead': 4,  # # transformer heads
             'num_layers': 4,  # transformer layers
-            'batch_size': 8,
-            'dropout': 0.15,
+            'batch_size': 16,
+            'dropout': 0.25,
             'time_scaler': 1,  # The portion of T for conv output time-series latent representative
-            'multi_label': False,
             'prediction_threshold': 0.5
         },
     ]

@@ -50,6 +50,7 @@ class Trainer:
             scheduler=None,
             is_binary=True,
             is_multi_label=False,
+            is_multi_class=False,
             prediction_threshold=0.5
     ):
         self.model = model
@@ -59,7 +60,8 @@ class Trainer:
         self.best_val_loss = float("inf")  # To track the best validation loss
         self.metrics_history = []  # Store metrics for all epochs
         self.is_multi_label = is_multi_label
-        self.is_binary =is_binary
+        self.is_multi_class = is_multi_class
+        self.is_binary = is_binary
         self.prediction_threshold = prediction_threshold
 
         if is_binary and is_multi_label:
