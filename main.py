@@ -208,7 +208,7 @@ if __name__ == "__main__":
             'num_epochs': 50,
             'd_model': 256,
             'nhead': 4,  # # transformer heads
-            'num_layers': 4,  # transformer layers
+            'num_layers': 8,  # transformer layers
             'batch_size': 16,
             'dropout': 0.25,
             'time_scaler': 1,  # The portion of T for conv output time-series latent representative

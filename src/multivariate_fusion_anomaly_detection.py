@@ -298,7 +298,8 @@ class MultivariateTSAD(nn.Module):
             use_learnable_pe=True,
             aggregator="attention",
             class_neurons_num=1,  # Binary classification default for anomaly detection.
-            multi_label=False
+            multi_label=False,
+            time_scaler=1
     ):
         super().__init__()
 
@@ -315,9 +316,9 @@ class MultivariateTSAD(nn.Module):
 
         # Positional encoding (choose between sinusoidal and learnable)
         if use_learnable_pe:
-            self.pos_encoding = LearnablePositionalEncoding(d_model, max_len=self.T)
+            self.pos_encoding = LearnablePositionalEncoding(d_model, max_len=int(time_scaler * self.T))
         else:
-            self.pos_encoding = SinusoidalPositionalEncoding(d_model, max_len=self.T)
+            self.pos_encoding = SinusoidalPositionalEncoding(d_model, max_len=int(time_scaler * self.T))
 
         # Transformer encoder
         self.transformer = get_transformer_variant(
@@ -436,7 +437,8 @@ def build_model(model_config: dict):
         nhead=nhead,
         num_layers=num_layers,
         dropout=dropout,
-        multi_label=multi_label
+        multi_label=multi_label,
+        time_scaler=time_scaler
     )
 
 

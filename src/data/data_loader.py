@@ -182,8 +182,13 @@ if __name__ == '__main__':
         failure_data_path = "/Users/etayar/PycharmProjects/MultivariateTSDroneAD/uav_data/boaz_csv_flight_data/anomalous_data"
         # REAL DATA DIRECTORIES
 
-    train_loader, val_loader, test_loader, label_counts = load_and_split_time_series_data(
-        normal_data_path, failure_data_path, batch_size=32
-    )
+    kwargs = {
+        'normal_path': normal_data_path,
+        'failure_path': failure_data_path,
+        'multilabel_path': '',
+        'multiclass_path': ''
+    }
+
+    train_loader, val_loader, test_loader, label_counts = load_and_split_time_series_data(**kwargs)
 
     exit()
