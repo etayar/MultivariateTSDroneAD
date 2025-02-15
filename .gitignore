@@ -30,3 +30,4 @@ ServerMachineDataset/train/
 ServerMachineDataset/train_csv/
 ServerMachineDataset/anomalous_data/
 ServerMachineDataset/normal_data/
+uea_datasets/

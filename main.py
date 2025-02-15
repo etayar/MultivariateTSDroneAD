@@ -57,11 +57,16 @@ def main(model_config=None, checkpoint_path=None):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Load data
+    kwargs = {
+        'normal_path': model_config.get('normal_path'),
+        'failure_path': model_config.get('fault_path'),
+        'multilabel_path': model_config.get('multilabel_path'),
+        'multiclass_path': model_config.get('multiclass_path')
+    }
     train_loader, val_loader, test_loader, label_counts = load_and_split_time_series_data(
-        normal_path=model_config['normal_path'],
-        failure_path=model_config['fault_path'],
         batch_size=model_config['batch_size'],
         random_state=42,
+        **kwargs
     )
 
     # Initialize model
@@ -150,18 +155,25 @@ if __name__ == "__main__":
     if "COLAB_GPU" in os.environ:
         print("Running in Google Colab - Updating paths!")
         base_path = "/content/drive/My Drive/My_PHD/My_First_Paper/MultivariateTSDroneAD/ServerMachineDataset/"
+        multilabel_base_path = ""
+        multiclass_base_path = ""
 
         # Create the directory for today's date if it doesn't exist
         date_dir = os.path.join("/content/drive/My Drive/My_PHD/My_First_Paper/MultivariateTSDroneAD/src/data/models_metrics", current_date)
     else:
         print("Running locally - Using Mac paths.")
         base_path = "/Users/etayar/PycharmProjects/MultivariateTSDroneAD/ServerMachineDataset/"
+        multilabel_base_path = ""
+        multiclass_base_path = ""
 
         # Create the directory for today's date if it doesn't exist
         date_dir = os.path.join("src/data/models_metrics", current_date)
 
-    normal_path = os.path.join(base_path, "normal_data")
-    fault_path = os.path.join(base_path, "anomalous_data")
+    normal_path = None #os.path.join(base_path, "normal_data")
+    fault_path = None #os.path.join(base_path, "anomalous_data")
+
+    multilabel_path = None if not multiclass_base_path else os.path.join(multiclass_base_path, "multilabel_path")
+    multiclass_path = None if not multiclass_base_path else os.path.join(multiclass_base_path, "multiclass_path")
 
     os.makedirs(date_dir, exist_ok=True)
 
@@ -174,6 +186,8 @@ if __name__ == "__main__":
         {
             'normal_path': normal_path,
             'fault_path': fault_path,
+            'multilabel_path': multilabel_path,
+            'multiclass_path': multiclass_path,
             'checkpoint_epoch_path': checkpoint_path,
             'best_model_path': best_model_path,
             'training_res': training_res,
@@ -183,7 +197,7 @@ if __name__ == "__main__":
             'transformer_variant': 'performer',  # Choose transformer variant
             'use_learnable_pe': True,  # Use learnable positional encoding
             'aggregator': 'attention',  # Use attention-based (time) aggregation
-            'num_epochs': 2,
+            'num_epochs': 50,
             'd_model': 128,
             'nhead': 4,  # # transformer heads
             'num_layers': 4,  # transformer layers
@@ -195,4 +209,9 @@ if __name__ == "__main__":
         },
     ]
     for config in configs:
+        print(
+            f"d_model: {config['d_model']}\n"
+            f"num_layers: {config['num_layers']}\n"
+            f"batch_size: {config['batch_size']}"
+        )
         main(config)

@@ -84,14 +84,59 @@ def load_uav_data(normal_path: str, failure_path: str):
     return data, labels
 
 
-def load_and_split_time_series_data(normal_path: str, failure_path: str, batch_size=32, random_state=42):
+def load_multiclass_data(pth: str):
+
+    return 'X', 'y'
+
+
+def load_multilabel_data(pth: str):
+
+    return 'X', 'y'
+
+
+def load_uea_binary_multivariate_ts():
+    # Load CSV file
+    df = pd.read_csv("/Users/etayar/PycharmProjects/MultivariateTSDroneAD/uea_datasets/Heartbeat.csv")
+
+    # Convert back to original shape
+    X = df.iloc[:, :-1].values.reshape(-1, 61, 405)
+    labels = df["label"].values
+
+    print("Loaded data shape:", X.shape)  # (Number of samples, channels (features), time steps per sample)
+    print("Loaded labels shape:", labels.shape)
+
+    return X, labels
+
+
+def load_data(
+        multilabel_path: str = None,
+        multiclass_path: str = None,
+        normal_path: str = None,
+        failure_path: str = None
+):
+
+    if normal_path:
+        data, label = load_uav_data(normal_path, failure_path)
+    elif multiclass_path:
+        data, label = load_multiclass_data(multiclass_path)
+    elif multilabel_path:
+        data, label = load_multilabel_data(multilabel_path)
+    else:
+        data, label = load_uea_binary_multivariate_ts()
+    return data, label
+
+
+
+# def load_and_split_time_series_data(normal_path: str, failure_path: str, batch_size=32, random_state=42):
+def load_and_split_time_series_data(batch_size=32, random_state=42, **kwargs):
     """
     Loads UAV time-series data from normal and failure directories, splits into train/val/test sets,
     returns DataLoaders along with class label counts.
     """
 
     # Load UAV time-series patches and labels
-    data, labels = load_uav_data(normal_path, failure_path)
+    data, labels = load_data(**kwargs)
+    # data, labels = load_uav_data(normal_path, failure_path)
 
     # Convert data into a proper NumPy array of float32
     data = np.array(data, dtype=np.float32)  # Ensure dtype consistency
