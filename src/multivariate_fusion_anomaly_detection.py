@@ -392,7 +392,7 @@ class MultivariateTSAD(nn.Module):
         x = self.activation1(x)
 
         # Automatically use LayerNorm if batch size is small
-        if x.shape[0] < 8:  # Adjust this threshold as needed
+        if x.shape[0] <= 16:  # Adjust this threshold as needed
             x = self.layer_norm(x)
         else:
             x = self.batch_norm(x)
