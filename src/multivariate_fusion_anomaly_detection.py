@@ -342,14 +342,30 @@ class MultivariateTSAD(nn.Module):
         else:
             raise ValueError(f"Unknown aggregator: {aggregator}")
 
-        # Fully connected layer for classification
-        self.fc = nn.Sequential(
-            nn.Linear(d_model, 128),
-            nn.ReLU(),
-            nn.Linear(128, class_neurons_num),  # Output layer
-            ModularActivation(class_neurons_num, multi_label=multi_label, criterion=criterion)  # Modular activation
-        )
+        # Fully connected layers
+        # self.fc = nn.Sequential(
+        #     nn.Linear(d_model, 128),
+        #     nn.ReLU(),
+        #     nn.BatchNorm1d(128),  # Normalize activations
+        #     nn.Linear(128, class_neurons_num)  # Output logits
+        # )
+        self.fc1 = nn.Linear(d_model, 128)
+        self.activation1 = nn.LeakyReLU(0.01)
+        self.batch_norm = nn.BatchNorm1d(128)
+        self.layer_norm = nn.LayerNorm(128)  # Alternative normalization
+        self.fc2 = nn.Linear(128, class_neurons_num)  # Output logits
 
+        # Modular activation function (Sigmoid or Softmax based on loss)
+        self.activation2 = ModularActivation(class_neurons_num, multi_label=multi_label, criterion=criterion)
+
+        # Apply weight initialization
+        self.apply(self.init_weights)
+
+    @staticmethod
+    def init_weights(m):
+        if isinstance(m, nn.Linear):
+            nn.init.xavier_uniform_(m.weight)
+            nn.init.zeros_(m.bias)
 
     def forward(self, x):
         x = self.conv_fuser(x)  # Shape: [batch_size, T, 1, 1]
@@ -372,7 +388,18 @@ class MultivariateTSAD(nn.Module):
         x = self.aggregator(x)  # Shape: [batch_size, d_model]
 
         # Pass through fully connected layer
-        x = self.fc(x)  # Shape: [batch_size, 1]
+        x = self.fc1(x)
+        x = self.activation1(x)
+
+        # Automatically use LayerNorm if batch size is small
+        if x.shape[0] < 8:  # Adjust this threshold as needed
+            x = self.layer_norm(x)
+        else:
+            x = self.batch_norm(x)
+
+        x = self.fc2(x)  # Compute logits
+        x = x.view(-1, 1) if x.shape[-1] == 1 else x  # Ensure logits shape is correct
+        x = self.activation2(x)  # Apply activation dynamically
         return x
 
     def predict(self, inputs, device="cpu", threshold=0.5):  # Default threshold = 0.5 for binary too

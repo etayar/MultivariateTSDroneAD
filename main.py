@@ -209,11 +209,11 @@ if __name__ == "__main__":
             'aggregator': 'conv',  # Use aggregation
             'num_epochs': 50,
             'd_model': 256,
-            'nhead': 8,  # # transformer heads
+            'nhead': 4,  # # transformer heads
             'num_layers': 8,  # transformer layers
             'batch_size': 16,
             'dropout': 0.0,
-            'time_scaler': 1,  # The portion of T for conv output time-series latent representative
+            'time_scaler': 1.6,  # The portion of T for conv output time-series latent representative
             'prediction_threshold': 0.5
         },
     ]
