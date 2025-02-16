@@ -75,6 +75,8 @@ def main(model_config=None, checkpoint_path=None):
 
     model_config['criterion'] = criterion
 
+    lr = model_config['learning_rate']
+
     # Initialize model
     if checkpoint_path: # If a checkpoint is provided, due to previous training interruption, load it
         print(f"Loading model from checkpoint: {checkpoint_path}")
@@ -86,7 +88,7 @@ def main(model_config=None, checkpoint_path=None):
         model.load_state_dict(checkpoint["model_state_dict"])
 
         # Define optimizer and scheduler
-        optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+        optimizer = torch.optim.Adam(model.parameters(), lr=lr)
         optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
 
         scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
@@ -106,7 +108,7 @@ def main(model_config=None, checkpoint_path=None):
         model.to(device)
 
         # Define optimizer and scheduler
-        optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
+        optimizer = torch.optim.Adam(model.parameters(), lr=lr)
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
             optimizer, mode="min", patience=3, factor=0.1, verbose=True
         )
@@ -213,6 +215,7 @@ if __name__ == "__main__":
             'num_layers': 8,  # transformer layers
             'batch_size': 32,
             'dropout': 0.0,
+            'learning_rate': 1e-5,
             'time_scaler': 1.6,  # The portion of T for conv output time-series latent representative
             'prediction_threshold': 0.5
         },
