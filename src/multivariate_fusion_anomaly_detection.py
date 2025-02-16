@@ -328,7 +328,7 @@ class MultivariateTSAD(nn.Module):
             d_model=d_model,
             nhead=nhead,
             num_layers=num_layers,
-            max_len=self.T,
+            max_len=int(time_scaler * self.T),
             dropout=dropout
         )
 
@@ -336,7 +336,7 @@ class MultivariateTSAD(nn.Module):
         if aggregator == "attention":
             self.aggregator = AttentionAggregator(d_model)
         elif aggregator == "linear":
-            self.aggregator = LinearAggregator(seq_len=self.T, d_model=d_model)
+            self.aggregator = LinearAggregator(seq_len=int(time_scaler * self.T), d_model=d_model)
         elif aggregator == "conv":
             self.aggregator = ConvAggregator(d_model)
         else:
