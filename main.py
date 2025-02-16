@@ -69,6 +69,12 @@ def main(model_config=None, checkpoint_path=None):
         **kwargs
     )
 
+    # Define criterion dynamically
+    criterion = get_criterion(model_config, label_counts)
+    criterion.to(device)
+
+    model_config['criterion'] = criterion
+
     # Initialize model
     if checkpoint_path: # If a checkpoint is provided, due to previous training interruption, load it
         print(f"Loading model from checkpoint: {checkpoint_path}")
@@ -106,10 +112,6 @@ def main(model_config=None, checkpoint_path=None):
         )
 
         start_epoch = 0  # Start from the first epoch
-
-    # Define criterion dynamically
-    criterion = get_criterion(model_config, label_counts)
-    criterion.to(device)
 
     # Initialize Trainer
     trainer = Trainer(
@@ -203,14 +205,14 @@ if __name__ == "__main__":
             'class_neurons_num': 1,  # Depends on the classification task (1 for binary...)
             'fuser_name': 'ConvFuser1',
             'transformer_variant': 'vanilla',  # Choose transformer variant
-            'use_learnable_pe': True,  # Use learnable positional encoding
-            'aggregator': 'attention',  # Use attention-based (time) aggregation
+            'use_learnable_pe': False,  # Use learnable positional encoding
+            'aggregator': 'conv',  # Use aggregation
             'num_epochs': 50,
             'd_model': 256,
-            'nhead': 4,  # # transformer heads
+            'nhead': 8,  # # transformer heads
             'num_layers': 8,  # transformer layers
             'batch_size': 16,
-            'dropout': 0.25,
+            'dropout': 0.0,
             'time_scaler': 1,  # The portion of T for conv output time-series latent representative
             'prediction_threshold': 0.5
         },

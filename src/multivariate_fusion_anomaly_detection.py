@@ -17,8 +17,8 @@ class ConvFuser1(BaseConvFuser):
 
     def __init__(self, input_shape, time_scaler=1):
         super().__init__()
-        self.T = input_shape[0]  # Time-series length
-        self.S = input_shape[1]  # Number of sensors
+        self.S = input_shape[0]  # Number of sensors
+        self.T = input_shape[1]  # Time-series length
         self.time_scaler = time_scaler
 
         sqrt_T = int(math.sqrt(self.T))
@@ -74,8 +74,8 @@ class ConvFuser2(BaseConvFuser):
 
     def __init__(self, input_shape):
         super().__init__()
-        self.T = input_shape[0]
-        self.S = input_shape[1]
+        self.S = input_shape[0]  # Number of sensors
+        self.T = input_shape[1]  # Time-series length
 
     # Some CNN architecture
 
@@ -84,8 +84,8 @@ class ConvFuser3(BaseConvFuser):
 
     def __init__(self, input_shape):
         super().__init__()
-        self.T = input_shape[0]
-        self.S = input_shape[1]
+        self.S = input_shape[0]  # Number of sensors
+        self.T = input_shape[1]  # Time-series length
 
     # Some CNN architecture
 
@@ -248,12 +248,13 @@ class ConvAggregator(nn.Module):
 
 
 class ModularActivation(nn.Module):
-    def __init__(self, class_neurons_num, multi_label=False):
+    def __init__(self, class_neurons_num, multi_label=False, criterion=None):
         super().__init__()
         self.multi_label = multi_label
+        self.use_logits = isinstance(criterion, nn.BCEWithLogitsLoss)
 
         if class_neurons_num == 1 or multi_label:
-            self.activation = nn.Sigmoid()  # Sigmoid for binary and multi-label
+            self.activation = nn.Identity() if self.use_logits else nn.Sigmoid()
         else:
             self.activation = nn.Softmax(dim=1)  # Softmax for multi-class
 
@@ -264,14 +265,14 @@ class ModularActivation(nn.Module):
 class MultivariateTSAD(nn.Module):
     """
     First, we apply a CNN architecture to fuse sensor data into a latent space:
-    Given a multivariate time-series of shape (T, S), where 𝑇 is the time-series length and
+    Given a multivariate time-series of shape (S, T), where T is the time-series length and
     S is the number of sensors, the MultivariateUnivariateFuser CNN learns hidden patterns
     and flattens the input into a first-order tensor. This tensor is then passed through a
     transformer architecture for further processing.
 
     Input Shape:
     For the input matrix [batch_size, channels, height, width], the model assumes an input shape
-    of (T, S), where S is the number of sensors and T is the time-series length.
+    of (S, T), where S is the number of sensors and T is the time-series length.
     Output Shape:
     After the CNN, the output shape is [batch_size, T, 1, 1].
 
@@ -299,7 +300,8 @@ class MultivariateTSAD(nn.Module):
             aggregator="attention",
             class_neurons_num=1,  # Binary classification default for anomaly detection.
             multi_label=False,
-            time_scaler=1
+            time_scaler=1,
+            criterion=None
     ):
         super().__init__()
 
@@ -345,7 +347,7 @@ class MultivariateTSAD(nn.Module):
             nn.Linear(d_model, 128),
             nn.ReLU(),
             nn.Linear(128, class_neurons_num),  # Output layer
-            ModularActivation(class_neurons_num, multi_label=multi_label)  # Modular activation
+            ModularActivation(class_neurons_num, multi_label=multi_label, criterion=criterion)  # Modular activation
         )
 
 
@@ -415,6 +417,7 @@ def build_model(model_config: dict):
     num_layers = model_config['num_layers']
     dropout = model_config['dropout']
     multi_label = model_config['multi_label']
+    criterion = model_config['criterion']
 
     # Choose CNN fuser dynamically
     if fuser_name == "ConvFuser1":
@@ -438,7 +441,8 @@ def build_model(model_config: dict):
         num_layers=num_layers,
         dropout=dropout,
         multi_label=multi_label,
-        time_scaler=time_scaler
+        time_scaler=time_scaler,
+        criterion=criterion
     )
 
 
