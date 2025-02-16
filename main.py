@@ -106,7 +106,7 @@ def main(model_config=None, checkpoint_path=None):
         model.to(device)
 
         # Define optimizer and scheduler
-        optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+        optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
             optimizer, mode="min", patience=3, factor=0.1, verbose=True
         )
@@ -211,7 +211,7 @@ if __name__ == "__main__":
             'd_model': 256,
             'nhead': 4,  # # transformer heads
             'num_layers': 8,  # transformer layers
-            'batch_size': 16,
+            'batch_size': 32,
             'dropout': 0.0,
             'time_scaler': 1.6,  # The portion of T for conv output time-series latent representative
             'prediction_threshold': 0.5

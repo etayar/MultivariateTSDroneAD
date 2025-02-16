@@ -8,7 +8,8 @@ We define a Trainer class that handles the full training loop, including:
 """
 import torch
 from tqdm import tqdm
-from sklearn.metrics import precision_score, recall_score, f1_score, roc_auc_score
+from sklearn.metrics import precision_score, recall_score, f1_score, roc_auc_score, accuracy_score
+
 
 
 class EarlyStopping:
@@ -69,10 +70,12 @@ class Trainer:
 
     def train_one_epoch(self, dataloader, device):
         """
-        Train the model for one epoch.
+        Train the model for one epoch and return loss along with predictions for metrics.
         """
         self.model.train()
         running_loss = 0
+        all_labels = []
+        all_predictions = []
 
         for batch in tqdm(dataloader, desc="Training Batches"):
             inputs, labels = batch
@@ -96,9 +99,20 @@ class Trainer:
 
             running_loss += loss.item()
 
+            # Convert outputs to probabilities and predictions
+            if self.is_binary or self.is_multi_label:
+                probs = torch.sigmoid(outputs)
+                predictions = (probs > self.prediction_threshold).float()
+            else:
+                probs = torch.softmax(outputs, dim=1)
+                predictions = torch.argmax(probs, dim=1)
+
+            all_labels.append(labels.cpu())
+            all_predictions.append(predictions.cpu())
+
         avg_loss = running_loss / len(dataloader)
-        print(f"Training Loss: {avg_loss}")
-        return avg_loss
+
+        return avg_loss, all_labels, all_predictions
 
     def evaluate(self, dataloader, device):
         """
@@ -175,7 +189,7 @@ class Trainer:
 
     def train(self, train_loader, val_loader, device, epochs, config, start_epoch=0, patience=5):
         """
-        Main training loop with early stopping.
+        Main training loop with early stopping and training accuracy, precision, and recall monitoring.
         """
         early_stopping = EarlyStopping(patience=patience)
 
@@ -183,7 +197,21 @@ class Trainer:
             print(f"\nEpoch {epoch + 1}/{epochs}")
 
             # Train one epoch
-            train_loss = self.train_one_epoch(train_loader, device)
+            train_loss, all_labels, all_predictions = self.train_one_epoch(train_loader, device)
+
+            # Compute Training Metrics
+            all_labels = torch.cat(all_labels).numpy()
+            all_predictions = torch.cat(all_predictions).numpy()
+
+            accuracy = accuracy_score(all_labels, all_predictions)
+            precision = precision_score(all_labels, all_predictions, average="binary" if self.is_binary else "weighted",
+                                        zero_division=0)
+            recall = recall_score(all_labels, all_predictions, average="binary" if self.is_binary else "weighted",
+                                  zero_division=0)
+
+            # Train monitoring
+            print(
+                f"Training Loss: {train_loss:.4f}, Accuracy: {accuracy:.4f}, Precision: {precision:.4f}, Recall: {recall:.4f}")
 
             # Evaluate on validation set
             val_loss, val_metrics = self.evaluate(val_loader, device)
@@ -192,6 +220,9 @@ class Trainer:
             self.metrics_history.append({
                 "epoch": epoch + 1,
                 "train_loss": train_loss,
+                "train_accuracy": accuracy,
+                "train_precision": precision,
+                "train_recall": recall,
                 "val_loss": val_loss,
                 **val_metrics
             })
@@ -216,7 +247,6 @@ class Trainer:
             # **Check for Early Stopping**
             if early_stopping.step(val_loss):
                 print(f"Early stopping triggered at epoch {epoch + 1}. Training stopped.")
-                # break  # Stop training loop  <--- Turned off, only save the model.
                 self.save_model_with_config(
                     epoch + 1,
                     config,
