@@ -103,38 +103,38 @@ class ResNet2D(BaseConvFuser):
     def __init__(self, input_shape, num_blocks=(2, 2, 2), hidden_dim=32, output_dim=128):
         super().__init__()
 
+        # Monitor the input tensor
         self.S = input_shape[0]  # Number of sensors
         self.T = input_shape[1]  # Time-series length
 
-        self.in_channels = hidden_dim
+        self.in_channels = hidden_dim  # Initial input channels
 
         # Initial 2D Conv Layer
-        self.conv1 = nn.Conv2d(
-            in_channels=1,  # Single channel input (S, T)
-            out_channels=hidden_dim,
-            kernel_size=(7, 7),
-            stride=(2, 2),
-            padding=(3, 3)
-        )
+        self.conv1 = nn.Conv2d(1, hidden_dim, kernel_size=7, stride=2, padding=3)
         self.bn1 = nn.BatchNorm2d(hidden_dim)
         self.relu = nn.ReLU(inplace=True)
-        self.maxpool = nn.MaxPool2d(kernel_size=(3, 3), stride=(2, 2), padding=(1, 1))
+        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
         # ResNet Blocks
-        self.layer1 = self._make_layer(hidden_dim, num_blocks[0])
-        self.layer2 = self._make_layer(hidden_dim * 2, num_blocks[1], stride=2)
-        self.layer3 = self._make_layer(hidden_dim * 4, num_blocks[2], stride=2)
+        self.layers = nn.ModuleList()  # Store layers dynamically
+        in_channels = hidden_dim  # Track in_channels dynamically
 
-        # Use AdaptiveAvgPool to keep time-series structure
+        for i in range(len(num_blocks)):
+            stride = 1 if i == 0 else 2  # First layer keeps stride=1, others use stride=2
+            out_channels = in_channels * 2  # Double the channels each time
+            self.layers.append(self._make_layer(in_channels, out_channels, num_blocks[i], stride=stride))
+            in_channels = out_channels  # Update in_channels after each layer
+
+        # Ensure projection gets correct number of channels dynamically
         self.projection = nn.Sequential(
-            nn.Conv2d(hidden_dim * 4, output_dim, kernel_size=1),
+            nn.Conv2d(in_channels, output_dim, kernel_size=1),
             nn.AdaptiveAvgPool2d((1, None))  # Keeps (batch, output_dim, T')
         )
 
-    def _make_layer(self, out_channels, blocks, stride=1):
-        layers = [ResNetBlock2D(self.in_channels, out_channels, stride=stride)]
-        self.in_channels = out_channels
-        layers += [ResNetBlock2D(out_channels, out_channels) for _ in range(1, blocks)]
+    @staticmethod
+    def _make_layer(in_channels, out_channels, blocks, stride=1):
+        layers = [ResNetBlock2D(in_channels, out_channels, stride=stride)]
+        layers.extend(ResNetBlock2D(out_channels, out_channels) for _ in range(1, blocks))
         return nn.Sequential(*layers)
 
     def forward(self, x):
@@ -144,13 +144,12 @@ class ResNet2D(BaseConvFuser):
         x = self.relu(x)
         x = self.maxpool(x)
 
-        x = self.layer1(x)
-        x = self.layer2(x)
-        x = self.layer3(x)
+        # Iterate over dynamically stored layers
+        for layer in self.layers:
+            x = layer(x)
 
         x = self.projection(x)  # (batch, output_dim, 1, T')
-
-        x = x.squeeze(2)  # Fix: Remove the sensor dimension S', keep (batch, output_dim, T')
+        x = x.squeeze(2)  # Remove the sensor dimension S', keep (batch, output_dim, T')
         return x
 
 
