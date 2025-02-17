@@ -70,14 +70,89 @@ class ConvFuser1(BaseConvFuser):
         return x
 
 
-class ConvFuser2(BaseConvFuser):
+class ResNetBlock2D(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size=(3, 3), stride=1):
+        super(ResNetBlock2D, self).__init__()
+        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size, stride=stride, padding=(1, 1))
+        self.bn1 = nn.BatchNorm2d(out_channels)
+        self.relu = nn.ReLU(inplace=True)
+        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size, stride=1, padding=(1, 1))
+        self.bn2 = nn.BatchNorm2d(out_channels)
 
-    def __init__(self, input_shape):
+        # Proper down sampling layer
+        self.downsample = nn.Sequential()
+        if stride != 1 or in_channels != out_channels:
+            self.downsample = nn.Sequential(
+                nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=stride, bias=False),
+                nn.BatchNorm2d(out_channels)
+            )
+
+    def forward(self, x):
+        identity = self.downsample(x)
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+        out = self.conv2(out)
+        out = self.bn2(out)
+        out += identity  # Residual connection
+        out = self.relu(out)
+        return out
+
+
+class ResNet2D(BaseConvFuser):
+    def __init__(self, input_shape, num_blocks=(2, 2, 2), hidden_dim=32, output_dim=128):
         super().__init__()
+
         self.S = input_shape[0]  # Number of sensors
         self.T = input_shape[1]  # Time-series length
 
-    # Some CNN architecture
+        self.in_channels = hidden_dim
+
+        # Initial 2D Conv Layer
+        self.conv1 = nn.Conv2d(
+            in_channels=1,  # Single channel input (S, T)
+            out_channels=hidden_dim,
+            kernel_size=(7, 7),
+            stride=(2, 2),
+            padding=(3, 3)
+        )
+        self.bn1 = nn.BatchNorm2d(hidden_dim)
+        self.relu = nn.ReLU(inplace=True)
+        self.maxpool = nn.MaxPool2d(kernel_size=(3, 3), stride=(2, 2), padding=(1, 1))
+
+        # ResNet Blocks
+        self.layer1 = self._make_layer(hidden_dim, num_blocks[0])
+        self.layer2 = self._make_layer(hidden_dim * 2, num_blocks[1], stride=2)
+        self.layer3 = self._make_layer(hidden_dim * 4, num_blocks[2], stride=2)
+
+        # Use AdaptiveAvgPool to keep time-series structure
+        self.projection = nn.Sequential(
+            nn.Conv2d(hidden_dim * 4, output_dim, kernel_size=1),
+            nn.AdaptiveAvgPool2d((1, None))  # Keeps (batch, output_dim, T')
+        )
+
+    def _make_layer(self, out_channels, blocks, stride=1):
+        layers = [ResNetBlock2D(self.in_channels, out_channels, stride=stride)]
+        self.in_channels = out_channels
+        layers += [ResNetBlock2D(out_channels, out_channels) for _ in range(1, blocks)]
+        return nn.Sequential(*layers)
+
+    def forward(self, x):
+        x = x.unsqueeze(1)  # Add channel dimension: (batch, 1, S, T)
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.maxpool(x)
+
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+
+        x = self.projection(x)  # (batch, output_dim, 1, T')
+
+        x = x.squeeze(2)  # Fix: Remove the sensor dimension S', keep (batch, output_dim, T')
+        return x
+
 
 
 class ConvFuser3(BaseConvFuser):
