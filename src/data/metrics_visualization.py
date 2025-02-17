@@ -43,6 +43,6 @@ def metrics_visualisation(root_pth: str, specific_date: str = None):
 if __name__ == '__main__':
     root_path = "/Users/etayar/PycharmProjects/MultivariateTSDroneAD/src/data/models_metrics"
 
-    metrics_visualisation(root_path, specific_date='2025-02-16')
+    metrics_visualisation(root_path, specific_date='2025-02-17')
 
     exit()
