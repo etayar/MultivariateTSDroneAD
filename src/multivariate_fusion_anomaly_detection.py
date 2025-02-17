@@ -100,7 +100,7 @@ class ResNetBlock2D(nn.Module):
 
 
 class ResNet2D(BaseConvFuser):
-    def __init__(self, input_shape, num_blocks=(2, 2, 2), hidden_dim=32, time_scaler=1):
+    def __init__(self, input_shape, blocks=(2, 2, 2), hidden_dim=32, time_scaler=1):
         super().__init__()
 
         # Monitor the input tensor
@@ -121,10 +121,10 @@ class ResNet2D(BaseConvFuser):
         self.layers = nn.ModuleList()
         in_channels = hidden_dim  # Track in_channels dynamically
 
-        for i in range(len(num_blocks)):
+        for i in range(len(blocks)):
             stride = 1 if i == 0 else 2  # First layer keeps stride=1, others use stride=2
             out_channels = in_channels * 2  # Double the channels each time
-            self.layers.append(self._make_layer(in_channels, out_channels, num_blocks[i], stride=stride))
+            self.layers.append(self._make_layer(in_channels, out_channels, blocks[i], stride=stride))
             in_channels = out_channels  # Update in_channels after each layer
 
         # **Projection Layer: Ensures Output is `time_scaler * T`**
@@ -527,7 +527,7 @@ def build_model(model_config: dict):
     if fuser_name == "ConvFuser1":
         fuser = ConvFuser1(input_shape, time_scaler)
     elif fuser_name == "ConvFuser2":
-        fuser = ResNet2D(input_shape, time_scaler=time_scaler)
+        fuser = ResNet2D(input_shape, blocks=model_config['blocks'], time_scaler=time_scaler)
     elif fuser_name == "ConvFuser3":
         fuser = ConvFuser3(input_shape)
     else:
@@ -565,6 +565,7 @@ if __name__ == '__main__':
         'test_res': 'test_res',
         'class_neurons_num': 1,  # Depends on the classification task (1 for binary...)
         'fuser_name': 'ConvFuser1',
+        'blocks': (4, 3, 4),  # The ResNet skip connection blocks
         'transformer_variant': 'performer',  # Choose transformer variant
         'use_learnable_pe': True,  # Use learnable positional encoding
         'aggregator': 'attention',  # Use attention-based (time) aggregation
