@@ -152,7 +152,7 @@ class ResNet2D(BaseConvFuser):
 
         # **Project to 1D Time-Series of Length `time_scaler * T`**
         x = self.projection(x)  # (batch, 1, 1, time_scaler * T)
-        x = x.squeeze(1).squeeze(1)  # Remove extra dimensions -> (batch, time_scaler * T)
+        x = x.permute(0, 3, 2, 1)
         return x
 
 
@@ -527,7 +527,7 @@ def build_model(model_config: dict):
     if fuser_name == "ConvFuser1":
         fuser = ConvFuser1(input_shape, time_scaler)
     elif fuser_name == "ConvFuser2":
-        fuser = ResNet2D(input_shape)
+        fuser = ResNet2D(input_shape, time_scaler=time_scaler)
     elif fuser_name == "ConvFuser3":
         fuser = ConvFuser3(input_shape)
     else:
