@@ -100,23 +100,25 @@ class ResNetBlock2D(nn.Module):
 
 
 class ResNet2D(BaseConvFuser):
-    def __init__(self, input_shape, num_blocks=(2, 2, 2), hidden_dim=32, output_dim=128):
+    def __init__(self, input_shape, num_blocks=(2, 2, 2), hidden_dim=32, time_scaler=1):
         super().__init__()
 
         # Monitor the input tensor
         self.S = input_shape[0]  # Number of sensors
         self.T = input_shape[1]  # Time-series length
+        print(f"Number of sensors: {self.S}")
+        print(f"Time-series length: {self.T}")
 
         self.in_channels = hidden_dim  # Initial input channels
 
-        # Initial 2D Conv Layer
+        # **Initial 2D Conv Layer**
         self.conv1 = nn.Conv2d(1, hidden_dim, kernel_size=7, stride=2, padding=3)
         self.bn1 = nn.BatchNorm2d(hidden_dim)
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
-        # ResNet Blocks
-        self.layers = nn.ModuleList()  # Store layers dynamically
+        # **ResNet Blocks**
+        self.layers = nn.ModuleList()
         in_channels = hidden_dim  # Track in_channels dynamically
 
         for i in range(len(num_blocks)):
@@ -125,10 +127,10 @@ class ResNet2D(BaseConvFuser):
             self.layers.append(self._make_layer(in_channels, out_channels, num_blocks[i], stride=stride))
             in_channels = out_channels  # Update in_channels after each layer
 
-        # Ensure projection gets correct number of channels dynamically
+        # **Projection Layer: Ensures Output is `time_scaler * T`**
         self.projection = nn.Sequential(
-            nn.Conv2d(in_channels, output_dim, kernel_size=1),
-            nn.AdaptiveAvgPool2d((1, None))  # Keeps (batch, output_dim, T')
+            nn.Conv2d(in_channels, 1, kernel_size=1),  # Reduce to 1-channel time-series
+            nn.AdaptiveAvgPool2d((1, int(time_scaler * self.T)))  # Ensures time length = time_scaler * T
         )
 
     @staticmethod
@@ -144,12 +146,13 @@ class ResNet2D(BaseConvFuser):
         x = self.relu(x)
         x = self.maxpool(x)
 
-        # Iterate over dynamically stored layers
+        # **Apply ResNet Blocks**
         for layer in self.layers:
             x = layer(x)
 
-        x = self.projection(x)  # (batch, output_dim, 1, T')
-        x = x.squeeze(2)  # Remove the sensor dimension S', keep (batch, output_dim, T')
+        # **Project to 1D Time-Series of Length `time_scaler * T`**
+        x = self.projection(x)  # (batch, 1, 1, time_scaler * T)
+        x = x.squeeze(1).squeeze(1)  # Remove extra dimensions -> (batch, time_scaler * T)
         return x
 
 
@@ -524,7 +527,7 @@ def build_model(model_config: dict):
     if fuser_name == "ConvFuser1":
         fuser = ConvFuser1(input_shape, time_scaler)
     elif fuser_name == "ConvFuser2":
-        fuser = ConvFuser2(input_shape)
+        fuser = ResNet2D(input_shape)
     elif fuser_name == "ConvFuser3":
         fuser = ConvFuser3(input_shape)
     else:
