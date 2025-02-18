@@ -216,8 +216,8 @@ if __name__ == "__main__":
             'num_layers': 8,  # transformer layers
             'batch_size': 16,
             'dropout': 0.14,
-            'learning_rate': 1e-5,
-            'time_scaler': 1.8,  # The portion of T for conv output time-series latent representative
+            'learning_rate': 1e-4,
+            'time_scaler': 2.8,  # The portion of T for conv output time-series latent representative
             'prediction_threshold': 0.5
         },
     ]
