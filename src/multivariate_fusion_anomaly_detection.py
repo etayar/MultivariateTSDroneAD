@@ -127,10 +127,10 @@ class ResNet2D(BaseConvFuser):
             self.layers.append(self._make_layer(in_channels, out_channels, blocks[i], stride=stride))
             in_channels = out_channels  # Update in_channels after each layer
 
-        # **Projection Layer: Ensures Output is `time_scaler * T`**
+        # Projection Layer: Ensures Output is `int(time_scaler * self.T)
         self.projection = nn.Sequential(
-            nn.Conv2d(in_channels, 1, kernel_size=1),  # Reduce to 1-channel time-series
-            nn.AdaptiveAvgPool2d((1, int(time_scaler * self.T)))  # Ensures time length = time_scaler * T
+            nn.Conv2d(in_channels, int(time_scaler * self.T), kernel_size=1),  # Reduce to int(time_scaler * self.T)-channel time-series
+            nn.AdaptiveAvgPool2d((1, 1))  # Ensures time length = int(time_scaler * self.T)
         )
 
     @staticmethod
@@ -150,9 +150,8 @@ class ResNet2D(BaseConvFuser):
         for layer in self.layers:
             x = layer(x)
 
-        # **Project to 1D Time-Series of Length `time_scaler * T`**
-        x = self.projection(x)  # (batch, 1, 1, time_scaler * T)
-        x = x.permute(0, 3, 2, 1)
+        # Project to 1D Time-Series of Length `int(time_scaler * self.T)
+        x = self.projection(x)  # (batch, int(time_scaler * self.T), 1, 1)
         return x
 
 

@@ -206,18 +206,18 @@ if __name__ == "__main__":
             'multi_class': multi_class,
             'class_neurons_num': 1,  # Depends on the classification task (1 for binary...)
             'fuser_name': 'ConvFuser2',
-            'blocks': (2, 2, 2, 2),  # The ResNet skip connection blocks
+            'blocks': (2, 3, 4, 5),  # The ResNet skip connection blocks
             'transformer_variant': 'vanilla',  # Choose transformer variant
-            'use_learnable_pe': False,  # Use learnable positional encoding
+            'use_learnable_pe': True,  # Use learnable positional encoding
             'aggregator': 'conv',  # Use aggregation
             'num_epochs': 50,
-            'd_model': 512,
+            'd_model': 256,
             'nhead': 4,  # # transformer heads
             'num_layers': 8,  # transformer layers
-            'batch_size': 32,
-            'dropout': 0.17,
+            'batch_size': 16,
+            'dropout': 0.14,
             'learning_rate': 1e-5,
-            'time_scaler': 1.6,  # The portion of T for conv output time-series latent representative
+            'time_scaler': 1.8,  # The portion of T for conv output time-series latent representative
             'prediction_threshold': 0.5
         },
     ]
