@@ -206,7 +206,7 @@ if __name__ == "__main__":
             'multi_class': multi_class,
             'class_neurons_num': 1,  # Depends on the classification task (1 for binary...)
             'fuser_name': 'ConvFuser2',
-            'blocks': (2, 3, 4, 5),  # The ResNet skip connection blocks
+            'blocks': (4, 3, 4, 5),  # The ResNet skip connection blocks
             'transformer_variant': 'vanilla',  # Choose transformer variant
             'use_learnable_pe': True,  # Use learnable positional encoding
             'aggregator': 'conv',  # Use aggregation
