@@ -206,7 +206,7 @@ if __name__ == "__main__":
             'multi_class': multi_class,
             'class_neurons_num': 1,  # Depends on the classification task (1 for binary...)
             'fuser_name': 'ConvFuser2',
-            'blocks': (4, 3, 4),  # The ResNet skip connection blocks
+            'blocks': (2, 2, 2, 2),  # The ResNet skip connection blocks
             'transformer_variant': 'vanilla',  # Choose transformer variant
             'use_learnable_pe': False,  # Use learnable positional encoding
             'aggregator': 'conv',  # Use aggregation
@@ -225,6 +225,7 @@ if __name__ == "__main__":
         print(
             f"d_model: {config['d_model']}\n"
             f"num_layers: {config['num_layers']}\n"
-            f"batch_size: {config['batch_size']}"
+            f"batch_size: {config['batch_size']}\n"
+            f"blocks: {config['blocks']}"
         )
         main(config)
