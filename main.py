@@ -211,11 +211,11 @@ if __name__ == "__main__":
             'use_learnable_pe': False,  # Use learnable positional encoding
             'aggregator': 'conv',  # Use aggregation
             'num_epochs': 50,
-            'd_model': 256,
+            'd_model': 512,
             'nhead': 4,  # # transformer heads
             'num_layers': 8,  # transformer layers
             'batch_size': 32,
-            'dropout': 0.0,
+            'dropout': 0.17,
             'learning_rate': 1e-5,
             'time_scaler': 1.6,  # The portion of T for conv output time-series latent representative
             'prediction_threshold': 0.5
