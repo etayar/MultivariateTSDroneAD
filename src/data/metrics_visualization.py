@@ -14,25 +14,39 @@ def metrics_visualisation(root_pth: str, specific_date: str = None):
 
     for file in files:
 
-        # if file.split('/')[-1].split('.')[0] == 'test':
-        #     continue
+        if file.split('/')[-1].split('.')[0] == 'test':
+            continue
 
         df = pd.read_json(root_pth + '/' + file)
         print(df.columns)
 
-        fields_to_inspect = ['train_loss', 'train_accuracy', 'val_loss', 'auc_roc']
+        loss = ['train_loss', 'val_loss']
+        acc_scores = ['train_accuracy', 'auc_roc' ]
 
         # Set figure size
         plt.figure(figsize=(12, 6))
 
-        # Plot each field against "epoch"
-        for column in fields_to_inspect:
+        # Plot each loss field against "epoch"
+        for column in loss:
             plt.plot(df["epoch"], df[column], label=column)
 
         # Add labels and title
         plt.xlabel("Epoch")
         plt.ylabel("Values")
-        plt.title("Training and Validation Metrics Over Epochs")
+        plt.title("Training and Validation loss Epochs")
+        plt.legend()
+        plt.grid()
+
+        plt.figure(figsize=(12, 6))
+
+        # Plot accuracy fields against "epoch"
+        for column in acc_scores:
+            plt.plot(df["epoch"], df[column], label=column)
+
+        # Add labels and title
+        plt.xlabel("Epoch")
+        plt.ylabel("Values")
+        plt.title("Training and Validation accuracy metrics")
         plt.legend()
         plt.grid()
 
@@ -43,6 +57,6 @@ def metrics_visualisation(root_pth: str, specific_date: str = None):
 if __name__ == '__main__':
     root_path = "/Users/etayar/PycharmProjects/MultivariateTSDroneAD/src/data/models_metrics"
 
-    metrics_visualisation(root_path, specific_date='2025-02-17')
+    metrics_visualisation(root_path, specific_date='2025-02-18')
 
     exit()
