@@ -178,7 +178,7 @@ if __name__ == "__main__":
     normal_path = None #os.path.join(base_path, "normal_data")
     fault_path = None #os.path.join(base_path, "anomalous_data")
 
-    multilabel_path = None if not multiclass_base_path else os.path.join(multiclass_base_path, "multilabel_path")
+    multilabel_path = None if not multilabel_base_path else os.path.join(multilabel_base_path, "multilabel_path")
     multiclass_path = None if not multiclass_base_path else os.path.join(multiclass_base_path, "multiclass_path")
 
     os.makedirs(date_dir, exist_ok=True)
