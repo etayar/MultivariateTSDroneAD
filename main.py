@@ -61,7 +61,8 @@ def main(model_config=None, checkpoint_path=None):
         'normal_path': model_config.get('normal_path'),
         'failure_path': model_config.get('fault_path'),
         'multilabel_path': model_config.get('multilabel_path'),
-        'multiclass_path': model_config.get('multiclass_path')
+        'multiclass_path': model_config.get('multiclass_path'),
+        'experimental_dataset_name': model_config.get('experimental_dataset_name')
     }
     train_loader, val_loader, test_loader, label_counts = load_and_split_time_series_data(
         split_rates=model_config['split_rates'],
@@ -156,6 +157,12 @@ def main(model_config=None, checkpoint_path=None):
 
 
 if __name__ == "__main__":
+    ####### EXPERIMENTAL DATASETS #########
+    potential_for_AD = ['Heartbeat', 'Handwriting', 'PhonemeSpectra', 'SelfRegulationSCP1', 'EthanolConcentration',
+                        'FaceDetection']
+    # dataset_name = 'Handwriting'
+    experimental_dataset_name = 'Heartbeat'
+    ####### EXPERIMENTAL DATASETS #########
 
     # Get the current date in "YYYY-MM-DD" format
     current_date = datetime.now().strftime("%Y-%m-%d")
@@ -222,7 +229,8 @@ if __name__ == "__main__":
             'learning_rate': 1e-4,
             'time_scaler': 2.8,  # The portion of T for conv output time-series latent representative
             'prediction_threshold': 0.5,
-            'split_rates': (0.3, 0.5)
+            'split_rates': (0.3, 0.5),
+            'experimental_dataset_name': experimental_dataset_name
         },
     ]
     for config in configs:

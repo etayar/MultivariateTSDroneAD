@@ -94,10 +94,7 @@ def load_multilabel_data(pth: str):
     return 'X', 'y'
 
 
-def load_uea_binary_multivariate_ts():
-    potential_for_AD = ['Heartbeat', 'Handwriting', 'PhonemeSpectra', 'SelfRegulationSCP1', 'EthanolConcentration', 'FaceDetection']
-    # dataset_name = 'Handwriting'
-    dataset_name = 'Heartbeat'
+def load_uea_binary_multivariate_ts(dataset_name):
 
     # Load CSV file
     if "COLAB_GPU" in os.environ:
@@ -136,7 +133,8 @@ def load_data(
         multilabel_path: str = None,
         multiclass_path: str = None,
         normal_path: str = None,
-        failure_path: str = None
+        failure_path: str = None,
+        experimental_dataset_name: str = None
 ):
 
     if normal_path:
@@ -146,12 +144,10 @@ def load_data(
     elif multilabel_path:
         data, label = load_multilabel_data(multilabel_path)
     else:
-        data, label = load_uea_binary_multivariate_ts()
+        data, label = load_uea_binary_multivariate_ts(experimental_dataset_name)
     return data, label
 
 
-
-# def load_and_split_time_series_data(normal_path: str, failure_path: str, batch_size=32, random_state=42):
 def load_and_split_time_series_data(split_rates=(0.2, 0.5), batch_size=32, random_state=42, **kwargs):
     """
     Loads UAV time-series data from normal and failure directories, splits into train/val/test sets,
