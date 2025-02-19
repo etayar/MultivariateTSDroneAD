@@ -300,26 +300,114 @@ class LinearAggregator(nn.Module):
         return x
 
 
-class ConvAggregator(nn.Module):
-    def __init__(self, d_model, kernel_size=3):
-        super().__init__()
-        self.conv = nn.Conv1d(
-            in_channels=d_model,
-            out_channels=d_model,
-            kernel_size=kernel_size,
-            stride=1,
-            padding=kernel_size // 2
-        )
-        self.global_pool = nn.AdaptiveMaxPool1d(1)  # Aggregate down to 1
+# class ConvAggregator(nn.Module):
+#     def __init__(self, d_model, kernel_size=3):
+#         super().__init__()
+#         self.conv = nn.Conv1d(
+#             in_channels=d_model,
+#             out_channels=d_model,
+#             kernel_size=kernel_size,
+#             stride=1,
+#             padding=kernel_size // 2
+#         )
+#         self.global_pool = nn.AdaptiveMaxPool1d(1)  # Aggregate down to 1
+#
+#     def forward(self, x):
+#         """
+#         x: [T, batch_size, d_model]
+#         Returns: [batch_size, d_model]
+#         """
+#         x = x.permute(1, 2, 0)  # Reshape to [batch_size, d_model, T]
+#         x = self.conv(x)  # Shape: [batch_size, d_model, T]
+#         x = self.global_pool(x).squeeze(-1)  # Shape: [batch_size, d_model]
+#         return x
+
+
+class ResNetBlock1D(nn.Module):
+    def __init__(self, d_model, kernel_size=3, stride=1, padding=1):
+        """
+        Standard 1D ResNet block with optional down sampling.
+        - No channel expansion, keeps everything within d_model.
+        """
+        super(ResNetBlock1D, self).__init__()
+        self.conv1 = nn.Conv1d(d_model, d_model, kernel_size, stride, padding, bias=False)
+        self.bn1 = nn.BatchNorm1d(d_model)
+        self.conv2 = nn.Conv1d(d_model, d_model, kernel_size, stride=1, padding=padding, bias=False)
+        self.bn2 = nn.BatchNorm1d(d_model)
+
+        # If stride > 1, adjust identity connection
+        self.downsample = None
+        if stride != 1:
+            self.downsample = nn.Conv1d(d_model, d_model, kernel_size=1, stride=stride, bias=False)
+
+        self.relu = nn.ReLU()
 
     def forward(self, x):
+        identity = x  # Store input for skip connection
+
+        out = self.relu(self.bn1(self.conv1(x)))
+        out = self.bn2(self.conv2(out))
+
+        # Adjust skip connection if needed
+        if self.downsample:
+            identity = self.downsample(identity)
+
+        out += identity
+        return self.relu(out)
+
+
+class ConvAggregator(nn.Module):
+    def __init__(self, d_model, blocks=(2, 2, 2)):
         """
-        x: [T, batch_size, d_model]
-        Returns: [batch_size, d_model]
+        Args:
+            d_model: Feature dimension remains unchanged throughout the network.
+            blocks: Tuple defining the number of ResNet blocks per stage.
         """
-        x = x.permute(1, 2, 0)  # Reshape to [batch_size, d_model, T]
-        x = self.conv(x)  # Shape: [batch_size, d_model, T]
-        x = self.global_pool(x).squeeze(-1)  # Shape: [batch_size, d_model]
+        super(ConvAggregator, self).__init__()
+        self.d_model = d_model
+
+        # Initial 1D convolution, mapping d_model → d_model (no channel expansion)
+        self.conv1 = nn.Conv1d(d_model, d_model, kernel_size=7, stride=2, padding=3, bias=False)
+        self.bn1 = nn.BatchNorm1d(d_model)
+        self.relu = nn.ReLU(inplace=True)
+        self.maxpool = nn.MaxPool1d(kernel_size=3, stride=2, padding=1)
+
+        # Creating ResNet blocks with fixed d_model
+        self.layers = nn.ModuleList()
+        for num_blocks in blocks:
+            self.layers.append(self._make_layer(d_model, num_blocks))
+
+        # Global Average Pooling to reduce sequence to a fixed-size representation
+        self.global_avg_pool = nn.AdaptiveAvgPool1d(1)
+        self.fc = nn.Linear(d_model, d_model)  # Ensuring final output is [batch_size, d_model]
+
+    def _make_layer(self, d_model, num_blocks, stride=1):
+        """
+        Creates a block of ResNet layers, keeping d_model unchanged.
+        """
+        layers = []
+
+        # If we need down sampling, apply stride only in the first block
+        layers.append(ResNetBlock1D(d_model, stride=stride))
+        for _ in range(1, num_blocks):
+            layers.append(ResNetBlock1D(d_model, stride=1))  # No stride in deeper blocks
+
+        return nn.Sequential(*layers)
+
+    def forward(self, x):
+        x = x.permute(1, 2, 0)  # Convert [T, batch, d_model] → [batch, d_model, T]
+
+        x = self.relu(self.bn1(self.conv1(x)))
+        x = self.maxpool(x)
+
+        # Apply all ResNet layers
+        for layer in self.layers:
+            x = layer(x)
+
+        x = self.global_avg_pool(x)  # Shape: [batch, d_model, 1]
+        x = torch.flatten(x, 1)  # Shape: [batch, d_model]
+        x = self.fc(x)  # Shape: [batch, d_model]
+
         return x
 
 
@@ -392,11 +480,13 @@ class MultivariateTSAD(nn.Module):
         # self.embedding = nn.Linear(self.T, d_model)
         self.embedding = nn.Linear(1, d_model)
 
+        scaled_T = int(time_scaler * self.T)
+
         # Positional encoding (choose between sinusoidal and learnable)
         if use_learnable_pe:
-            self.pos_encoding = LearnablePositionalEncoding(d_model, max_len=int(time_scaler * self.T))
+            self.pos_encoding = LearnablePositionalEncoding(d_model, max_len=scaled_T)
         else:
-            self.pos_encoding = SinusoidalPositionalEncoding(d_model, max_len=int(time_scaler * self.T))
+            self.pos_encoding = SinusoidalPositionalEncoding(d_model, max_len=scaled_T)
 
         # Transformer encoder
         self.transformer = get_transformer_variant(
@@ -404,7 +494,7 @@ class MultivariateTSAD(nn.Module):
             d_model=d_model,
             nhead=nhead,
             num_layers=num_layers,
-            max_len=int(time_scaler * self.T),
+            max_len=scaled_T,
             dropout=dropout
         )
 
@@ -412,19 +502,13 @@ class MultivariateTSAD(nn.Module):
         if aggregator == "attention":
             self.aggregator = AttentionAggregator(d_model)
         elif aggregator == "linear":
-            self.aggregator = LinearAggregator(seq_len=int(time_scaler * self.T), d_model=d_model)
+            self.aggregator = LinearAggregator(seq_len=scaled_T, d_model=d_model)
         elif aggregator == "conv":
             self.aggregator = ConvAggregator(d_model)
         else:
             raise ValueError(f"Unknown aggregator: {aggregator}")
 
         # Fully connected layers
-        # self.fc = nn.Sequential(
-        #     nn.Linear(d_model, 128),
-        #     nn.ReLU(),
-        #     nn.BatchNorm1d(128),  # Normalize activations
-        #     nn.Linear(128, class_neurons_num)  # Output logits
-        # )
         self.fc1 = nn.Linear(d_model, 128)
         self.activation1 = nn.LeakyReLU(0.01)
         self.batch_norm = nn.BatchNorm1d(128)
