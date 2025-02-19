@@ -64,6 +64,7 @@ def main(model_config=None, checkpoint_path=None):
         'multiclass_path': model_config.get('multiclass_path')
     }
     train_loader, val_loader, test_loader, label_counts = load_and_split_time_series_data(
+        split_rates=model_config['split_rates'],
         batch_size=model_config['batch_size'],
         random_state=42,
         **kwargs
@@ -218,7 +219,8 @@ if __name__ == "__main__":
             'dropout': 0.14,
             'learning_rate': 1e-4,
             'time_scaler': 2.8,  # The portion of T for conv output time-series latent representative
-            'prediction_threshold': 0.5
+            'prediction_threshold': 0.5,
+            'split_rates': (0.3, 0.5)
         },
     ]
     for config in configs:

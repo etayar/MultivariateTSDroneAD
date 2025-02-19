@@ -95,21 +95,40 @@ def load_multilabel_data(pth: str):
 
 
 def load_uea_binary_multivariate_ts():
+    potential_for_AD = ['Heartbeat', 'Handwriting', 'PhonemeSpectra', 'SelfRegulationSCP1', 'EthanolConcentration', 'FaceDetection']
+    dataset_name = 'Handwriting'
+
     # Load CSV file
     if "COLAB_GPU" in os.environ:
-        df = pd.read_csv(
-            "/content/drive/My Drive/My_PHD/My_First_Paper/MultivariateTSDroneAD/uea_datasets/Heartbeat.csv")
+
+        folder = "/content/drive/My Drive/My_PHD/My_First_Paper/MultivariateTSDroneAD/uea_datasets"
     else:
-        df = pd.read_csv("/Users/etayar/PycharmProjects/MultivariateTSDroneAD/uea_datasets/Heartbeat.csv")
+        folder = "/Users/etayar/PycharmProjects/MultivariateTSDroneAD/uea_datasets"
 
-    # Convert back to original shape
-    X = df.iloc[:, :-1].values.reshape(-1, 61, 405)
-    labels = df["label"].values
+    csv_path = os.path.join(folder, dataset_name + ".csv")
 
-    print("Loaded data shape:", X.shape)  # (Number of samples, channels (features), time steps per sample)
-    print("Loaded labels shape:", labels.shape)
+    # Read metadata from the first row
+    with open(csv_path, "r") as f:
+        metadata = f.readline().strip()  # Read first row
 
-    return X, labels
+    if metadata.startswith("@"):  # Ensure it's a metadata row
+        num_channels, time_steps = map(int, metadata[1:].split(","))
+    else:
+        raise ValueError("Metadata row missing or incorrectly formatted!")
+
+    # Load the actual data (excluding the first row)
+    df = pd.read_csv(csv_path, skiprows=1)  # Skip metadata row
+
+    # Extract features and labels
+    X_flat = df.iloc[:, :-1].values  # Drop label column
+    y = df.iloc[:, -1].values  # Extract labels
+
+    # Reshape back to original 3D format
+    num_samples = X_flat.shape[0]
+    X = X_flat.reshape(num_samples, num_channels, time_steps)
+
+    print(f"Loaded dataset '{dataset_name}' with shape: {X.shape}")
+    return X, y
 
 
 def load_data(
@@ -132,7 +151,7 @@ def load_data(
 
 
 # def load_and_split_time_series_data(normal_path: str, failure_path: str, batch_size=32, random_state=42):
-def load_and_split_time_series_data(batch_size=32, random_state=42, **kwargs):
+def load_and_split_time_series_data(split_rates=(0.2, 0.5), batch_size=32, random_state=42, **kwargs):
     """
     Loads UAV time-series data from normal and failure directories, splits into train/val/test sets,
     returns DataLoaders along with class label counts.
@@ -151,12 +170,12 @@ def load_and_split_time_series_data(batch_size=32, random_state=42, **kwargs):
 
     # Split into training and temporary sets (validation + test)
     X_train, X_temp, y_train, y_temp = train_test_split(
-        data, labels, test_size=0.3, random_state=random_state
+        data, labels, test_size=split_rates[0], random_state=random_state
     )
 
     # Split temporary set into validation and test sets
     X_val, X_test, y_val, y_test = train_test_split(
-        X_temp, y_temp, test_size=0.5, random_state=random_state
+        X_temp, y_temp, test_size=split_rates[1], random_state=random_state
     )
 
     # Create PyTorch datasets
@@ -187,8 +206,8 @@ if __name__ == '__main__':
         # REAL DATA DIRECTORIES
 
     kwargs = {
-        'normal_path': normal_data_path,
-        'failure_path': failure_data_path,
+        'normal_path': None, # normal_data_path,
+        'failure_path': None, # failure_data_path,
         'multilabel_path': '',
         'multiclass_path': ''
     }
