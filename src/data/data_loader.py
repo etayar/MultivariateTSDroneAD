@@ -96,7 +96,8 @@ def load_multilabel_data(pth: str):
 
 def load_uea_binary_multivariate_ts():
     potential_for_AD = ['Heartbeat', 'Handwriting', 'PhonemeSpectra', 'SelfRegulationSCP1', 'EthanolConcentration', 'FaceDetection']
-    dataset_name = 'Handwriting'
+    # dataset_name = 'Handwriting'
+    dataset_name = 'Heartbeat'
 
     # Load CSV file
     if "COLAB_GPU" in os.environ:

@@ -52,6 +52,7 @@ class Trainer:
             is_binary=True,
             is_multi_label=False,
             is_multi_class=False,
+            num_classes=2,
             prediction_threshold=0.5
     ):
         self.model = model
@@ -63,6 +64,7 @@ class Trainer:
         self.is_multi_label = is_multi_label
         self.is_multi_class = is_multi_class
         self.is_binary = is_binary
+        self.num_classes = num_classes
         self.prediction_threshold = prediction_threshold
 
         if is_binary and is_multi_label:
@@ -81,14 +83,17 @@ class Trainer:
             inputs, labels = batch
             inputs, labels = inputs.to(device), labels.to(device)
 
-            # Ensure binary classification labels have the correct shape
-            if self.is_binary and labels.dim() == 1:
-                labels = labels.unsqueeze(1)  # Fix for binary classification ONLY
-
             if self.is_binary:
-                if labels.dim() == 1:
-                    labels = labels.unsqueeze(1)  # Ensure shape is [batch_size, 1]
+                # Binary classification: BCEWithLogitsLoss expects (batch_size, 1)
+                labels = labels.view(-1, 1) if labels.dim() == 1 else labels
                 labels = labels.float()  # Convert to float for BCE loss
+            elif self.is_multi_label:
+                # Multilabel classification: BCEWithLogitsLoss expects (batch_size, num_classes)
+                labels = labels.view(-1, self.num_classes) if labels.dim() == 1 else labels
+                labels = labels.float()  # Ensure floating-point labels for BCE loss
+            elif self.is_multi_class:
+                # Multiclass classification: CrossEntropyLoss expects (batch_size,)
+                labels = labels.long()  # Ensure integer class labels for CrossEntropyLoss
 
             self.optimizer.zero_grad()
             outputs = self.model(inputs)
@@ -130,14 +135,17 @@ class Trainer:
                 inputs, labels = batch
                 inputs, labels = inputs.to(device), labels.to(device)
 
-                # Ensure binary classification labels have the correct shape
-                if self.is_binary and labels.dim() == 1:
-                    labels = labels.unsqueeze(1)  # Fix for binary classification ONLY
-
                 if self.is_binary:
-                    if labels.dim() == 1:
-                        labels = labels.unsqueeze(1)  # Ensure shape is [batch_size, 1]
+                    # Binary classification: BCEWithLogitsLoss expects (batch_size, 1)
+                    labels = labels.view(-1, 1) if labels.dim() == 1 else labels
                     labels = labels.float()  # Convert to float for BCE loss
+                elif self.is_multi_label:
+                    # Multilabel classification: BCEWithLogitsLoss expects (batch_size, num_classes)
+                    labels = labels.view(-1, self.num_classes) if labels.dim() == 1 else labels
+                    labels = labels.float()  # Ensure floating-point labels for BCE loss
+                elif self.is_multi_class:
+                    # Multiclass classification: CrossEntropyLoss expects (batch_size,)
+                    labels = labels.long()  # Ensure integer class labels for CrossEntropyLoss
 
                 outputs = self.model(inputs)
                 total_loss += self.criterion(outputs, labels).item()

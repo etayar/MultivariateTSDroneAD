@@ -34,7 +34,7 @@ def get_criterion(model_config, label_counts):
     class_weights_tensor = torch.tensor([class_weights[cls] for cls in sorted(label_counts.keys())])
 
     # Apply correct loss function
-    if model_config["class_neurons_num"] == 1 and not model_config.get("multi_label", False):
+    if model_config["binary"]:
         # Binary classification (Single Sigmoid neuron)
         num_negative = label_counts[0]  # Count of negative class
         num_positive = label_counts[1]  # Count of positive class
@@ -69,12 +69,14 @@ def main(model_config=None, checkpoint_path=None):
         random_state=42,
         **kwargs
     )
+    num_classes = len(label_counts)
 
     # Define criterion dynamically
     criterion = get_criterion(model_config, label_counts)
     criterion.to(device)
 
     model_config['criterion'] = criterion
+    model_config['class_neurons_num'] = 1 if num_classes == 2 else num_classes
 
     lr = model_config['learning_rate']
 
@@ -121,6 +123,7 @@ def main(model_config=None, checkpoint_path=None):
         model,
         optimizer,
         criterion,
+        num_classes=len(label_counts),
         scheduler=scheduler,
         is_binary=model_config['binary'],
         is_multi_label=model_config['multi_label'],
@@ -202,10 +205,9 @@ if __name__ == "__main__":
             'best_model_path': best_model_path,
             'training_res': training_res,
             'test_res': test_res,
-            'binary': binary,
-            'multi_label': multi_label,
-            'multi_class': multi_class,
-            'class_neurons_num': 1,  # Depends on the classification task (1 for binary...)
+            'binary': True,
+            'multi_label': False,
+            'multi_class': False,
             'fuser_name': 'ConvFuser2',
             'blocks': (4, 3, 4, 5),  # The ResNet skip connection blocks
             'transformer_variant': 'vanilla',  # Choose transformer variant
