@@ -101,7 +101,7 @@ def load_uea_binary_multivariate_ts():
     # Load CSV file
     if "COLAB_GPU" in os.environ:
 
-        folder = "/content/drive/My Drive/My_PHD/My_First_Paper/MultivariateTSDroneAD/uea_datasets"
+        folder = "/content/drive/My Drive/My_PHD/My_First_Paper/uea_datasets"
     else:
         folder = "/Users/etayar/PycharmProjects/MultivariateTSDroneAD/uea_datasets"
 
