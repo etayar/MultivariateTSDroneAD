@@ -160,8 +160,8 @@ if __name__ == "__main__":
     ####### EXPERIMENTAL DATASETS #########
     potential_for_AD = ['Heartbeat', 'Handwriting', 'PhonemeSpectra', 'SelfRegulationSCP1', 'EthanolConcentration',
                         'FaceDetection']
-    experimental_dataset_name = 'Handwriting'
-    # experimental_dataset_name = 'Heartbeat'
+    # experimental_dataset_name = 'Handwriting'
+    experimental_dataset_name = 'Heartbeat'
     ####### EXPERIMENTAL DATASETS #########
 
     # Get the current date in "YYYY-MM-DD" format
@@ -212,9 +212,9 @@ if __name__ == "__main__":
             'best_model_path': best_model_path,
             'training_res': training_res,
             'test_res': test_res,
-            'binary': False,
+            'binary': True,
             'multi_label': False,
-            'multi_class': True,
+            'multi_class': False,
             'fuser_name': 'ConvFuser2',
             'blocks': (2, 2, 2, 2, 2),  # The ResNet skip connection blocks
             'transformer_variant': 'vanilla',  # Choose transformer variant

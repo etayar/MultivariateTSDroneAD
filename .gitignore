@@ -30,4 +30,9 @@ ServerMachineDataset/train/
 ServerMachineDataset/train_csv/
 ServerMachineDataset/anomalous_data/
 ServerMachineDataset/normal_data/
-uea_datasets/
+uea_datasets/EthanolConcentration.csv
+uea_datasets/PhonemeSpectra.csv
+uea_datasets/Heartbeat.csv
+uea_datasets/FaceDetection.csv
+uea_datasets/Handwriting.csv
+uea_datasets/SelfRegulationSCP1.csv
