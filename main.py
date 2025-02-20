@@ -229,7 +229,7 @@ if __name__ == "__main__":
             'learning_rate': 1e-4,
             'time_scaler': 2.8,  # The portion of T for conv output time-series latent representative
             'prediction_threshold': 0.5,
-            'split_rates': (0.3, 0.5),
+            'split_rates': (0.2, 0.5),
             'experimental_dataset_name': experimental_dataset_name
         },
     ]
@@ -239,9 +239,9 @@ if __name__ == "__main__":
             f"nhead: {config['nhead']}\n"
             f"num_layers: {config['num_layers']}\n"
             f"batch_size: {config['batch_size']}\n"
-            f"dropout: {config['dropout']}"
-            f"learning_rate: {config['learning_rate']}"
-            f"time_scaler: {config['time_scaler']}"
+            f"dropout: {config['dropout']}\n"
+            f"learning_rate: {config['learning_rate']}\n"
+            f"time_scaler: {config['time_scaler']}\n"
             f"blocks: {config['blocks']}"
         )
         main(config)
