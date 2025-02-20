@@ -167,12 +167,12 @@ def load_and_split_time_series_data(split_rates=(0.2, 0.5), batch_size=32, rando
 
     # Split into training and temporary sets (validation + test)
     X_train, X_temp, y_train, y_temp = train_test_split(
-        data, labels, test_size=split_rates[0], random_state=random_state
+        data, labels, test_size=split_rates[0], stratify=labels, random_state=random_state
     )
 
     # Split temporary set into validation and test sets
     X_val, X_test, y_val, y_test = train_test_split(
-        X_temp, y_temp, test_size=split_rates[1], random_state=random_state
+        X_temp, y_temp, test_size=split_rates[1], stratify=y_temp, random_state=random_state
     )
 
     # Create PyTorch datasets

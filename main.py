@@ -216,7 +216,7 @@ if __name__ == "__main__":
             'multi_label': False,
             'multi_class': True,
             'fuser_name': 'ConvFuser2',
-            'blocks': (4, 3, 4, 5),  # The ResNet skip connection blocks
+            'blocks': (2, 2, 2, 2, 2),  # The ResNet skip connection blocks
             'transformer_variant': 'vanilla',  # Choose transformer variant
             'use_learnable_pe': True,  # Use learnable positional encoding
             'aggregator': 'conv',  # Use aggregation
