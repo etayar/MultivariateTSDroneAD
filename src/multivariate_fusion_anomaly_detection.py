@@ -395,7 +395,7 @@ class ConvAggregator(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x):
-        x = x.permute(1, 2, 0)  # Convert [T, batch, d_model] → [batch, d_model, T]
+        x = x.permute(1, 2, 0)  # Convert [T, batch, d_model] -> [batch, d_model, T]
 
         x = self.relu(self.bn1(self.conv1(x)))
         x = self.maxpool(x)
@@ -482,7 +482,7 @@ class MultivariateTSAD(nn.Module):
 
         scaled_T = int(time_scaler * self.T)
 
-        # Positional encoding (choose between sinusoidal and learnable)
+        # Positional encoding
         if use_learnable_pe:
             self.pos_encoding = LearnablePositionalEncoding(d_model, max_len=scaled_T)
         else:

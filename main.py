@@ -236,8 +236,12 @@ if __name__ == "__main__":
     for config in configs:
         print(
             f"d_model: {config['d_model']}\n"
+            f"nhead: {config['nhead']}\n"
             f"num_layers: {config['num_layers']}\n"
             f"batch_size: {config['batch_size']}\n"
+            f"dropout: {config['dropout']}"
+            f"learning_rate: {config['learning_rate']}"
+            f"time_scaler: {config['time_scaler']}"
             f"blocks: {config['blocks']}"
         )
         main(config)

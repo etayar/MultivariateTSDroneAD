@@ -254,7 +254,7 @@ class Trainer:
 
             # **Check for Early Stopping**
             if early_stopping.step(val_loss):
-                print(f"Early stopping triggered at epoch {epoch + 1}. Training stopped.")
+                print(f"Early stopping triggered at epoch {epoch + 1}.")
                 self.save_model_with_config(
                     epoch + 1,
                     config,
