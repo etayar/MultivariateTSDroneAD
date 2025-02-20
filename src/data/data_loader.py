@@ -175,6 +175,19 @@ def load_and_split_time_series_data(split_rates=(0.2, 0.5), batch_size=32, rando
         X_temp, y_temp, test_size=split_rates[1], stratify=y_temp, random_state=random_state
     )
 
+    # Check for missing classes in validation and test
+    missing_classes_val = set(np.unique(y_train)) - set(np.unique(y_val))
+    missing_classes_test = set(np.unique(y_train)) - set(np.unique(y_test))
+
+    # If missing classes exist, raise an error and abort execution
+    if missing_classes_val or missing_classes_test:
+        error_message = "ERROR: Some classes are missing in validation/test sets!\n"
+        if missing_classes_val:
+            error_message += f"Missing in validation set: {missing_classes_val}\n"
+        if missing_classes_test:
+            error_message += f"Missing in test set: {missing_classes_test}\n"
+        raise ValueError(error_message)
+
     # Create PyTorch datasets
     train_dataset = UAVTimeSeriesDataset(X_train, y_train)
     val_dataset = UAVTimeSeriesDataset(X_val, y_val)
