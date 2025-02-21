@@ -221,15 +221,15 @@ if __name__ == "__main__":
             'use_learnable_pe': True,  # Use learnable positional encoding
             'aggregator': 'conv',  # Use aggregation
             'num_epochs': 50,
-            'd_model': 256,
-            'nhead': 4,  # # transformer heads
+            'd_model': 315,
+            'nhead': 5,  # # transformer heads
             'num_layers': 8,  # transformer layers
             'batch_size': 16,
-            'dropout': 0.14,
+            'dropout': 0.1,
             'learning_rate': 1e-4,
             'time_scaler': None,  # The portion of T for conv output time-series latent representative
             'prediction_threshold': 0.5,
-            'split_rates': (0.2, 0.5),
+            'split_rates': (0.2, 0.3),
             'experimental_dataset_name': experimental_dataset_name
         },
     ]
@@ -238,6 +238,7 @@ if __name__ == "__main__":
     while load_model.lower().strip() not in ['yes', 'no']:
         load_model = input("Load existing model (strictly yes or no answer)?")
     if load_model == 'no':
+        print("Start training new model.")
         checkpoint_path = None
 
     for config in configs:
