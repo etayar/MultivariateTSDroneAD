@@ -217,9 +217,21 @@ class Trainer:
             recall = recall_score(all_labels, all_predictions, average="binary" if self.is_binary else "weighted",
                                   zero_division=0)
 
+            # Compute AUC-ROC
+            if self.is_binary:
+                auc_roc = roc_auc_score(all_labels, all_predictions)
+            elif self.is_multi_label:
+                auc_roc = roc_auc_score(all_labels, all_predictions, average="macro")
+            else:
+                auc_roc = roc_auc_score(all_labels, all_predictions, multi_class="ovr")
+
             # Train monitoring
             print(
-                f"Training Loss: {train_loss:.4f}, Accuracy: {accuracy:.4f}, Precision: {precision:.4f}, Recall: {recall:.4f}")
+                f"Training Loss: {train_loss:.4f}, "
+                f"Accuracy (auc_roc): {auc_roc:.4f}, "
+                f"Precision: {precision:.4f}, "
+                f"Recall: {recall:.4f}"
+            )
 
             # Evaluate on validation set
             val_loss, val_metrics = self.evaluate(val_loader, device)
@@ -228,7 +240,7 @@ class Trainer:
             self.metrics_history.append({
                 "epoch": epoch + 1,
                 "train_loss": train_loss,
-                "train_accuracy": accuracy,
+                "train_accuracy (auc_roc)": auc_roc,
                 "train_precision": precision,
                 "train_recall": recall,
                 "val_loss": val_loss,
