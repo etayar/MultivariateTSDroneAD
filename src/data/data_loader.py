@@ -94,7 +94,7 @@ def load_multilabel_data(pth: str):
     return 'X', 'y'
 
 
-def load_uea_binary_multivariate_ts(dataset_name):
+def load_uea_multivariate_ts(dataset_name):
 
     # Load CSV file
     if "COLAB_GPU" in os.environ:
@@ -144,7 +144,7 @@ def load_data(
     elif multilabel_path:
         data, label = load_multilabel_data(multilabel_path)
     else:
-        data, label = load_uea_binary_multivariate_ts(experimental_dataset_name)
+        data, label = load_uea_multivariate_ts(experimental_dataset_name)
     return data, label
 
 
