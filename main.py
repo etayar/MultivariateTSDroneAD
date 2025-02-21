@@ -237,9 +237,7 @@ if __name__ == "__main__":
     load_model = input("Load existing model (strictly yes or no answer)?")
     while load_model.lower().strip() not in ['yes', 'no']:
         load_model = input("Load existing model (strictly yes or no answer)?")
-    if load_model == 'yes':
-        checkpoint_path = checkpoint_path
-    else:
+    if load_model == 'no':
         checkpoint_path = None
 
     for config in configs:
