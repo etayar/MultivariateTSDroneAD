@@ -606,6 +606,11 @@ def build_model(model_config: dict):
     multi_label = model_config['multi_label']
     criterion = model_config['criterion']
 
+    S, T = input_shape
+    S_tag = math.log(S)
+    traget_T = S_tag * T
+    time_scaler = traget_T / T
+
     # Choose CNN fuser dynamically
     if fuser_name == "ConvFuser1":
         fuser = ConvFuser1(input_shape, time_scaler)
