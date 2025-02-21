@@ -21,7 +21,7 @@ def metrics_visualisation(root_pth: str, specific_date: str = None):
         print(df.columns)
 
         loss = ['train_loss', 'val_loss']
-        acc_scores = ['train_accuracy', 'auc_roc' ]
+        acc_scores = ['train_accuracy (auc_roc)', 'auc_roc' ]
 
         # Set figure size
         plt.figure(figsize=(12, 6))
