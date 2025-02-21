@@ -6,10 +6,10 @@ We define a Trainer class that handles the full training loop, including:
     * Saving the model
     * Logging metrics
 """
+import numpy as np
 import torch
 from tqdm import tqdm
 from sklearn.metrics import precision_score, recall_score, f1_score, roc_auc_score, accuracy_score
-
 
 
 class EarlyStopping:
@@ -53,19 +53,25 @@ class Trainer:
             is_multi_label=False,
             is_multi_class=False,
             num_classes=2,
-            prediction_threshold=0.5
+            prediction_threshold=0.5,
+            ema_alpha=0.1,
+            window_s=5
     ):
         self.model = model
         self.optimizer = optimizer
         self.criterion = criterion
         self.scheduler = scheduler
-        self.best_val_loss = float("inf")  # To track the best validation loss
-        self.metrics_history = []  # Store metrics for all epochs
         self.is_multi_label = is_multi_label
         self.is_multi_class = is_multi_class
         self.is_binary = is_binary
         self.num_classes = num_classes
         self.prediction_threshold = prediction_threshold
+        self.best_val_loss = float("inf")  # To track the best validation loss
+        self.metrics_history = []  # Store metrics for all epochs
+        self.val_loss = []
+        self.EMA = []
+        self.ema_alpha = ema_alpha
+        self.window_s = window_s
 
         if is_binary and is_multi_label:
             raise ValueError("A model cannot be both binary and multi-label. Check configuration.")
@@ -238,6 +244,18 @@ class Trainer:
 
             # Evaluate on validation set
             val_loss, val_metrics = self.evaluate(val_loader, device)
+            self.val_loss.append(val_loss)
+            if epoch < self.window_s - 1:
+                rolling_avg = np.mean(self.val_loss)
+            else:
+                rolling_avg = np.mean(self.val_loss[-self.window_s:])
+
+            if epoch == 0:
+                ema_t = val_loss
+            else:
+                bias_correction = 1 - (1 - self.ema_alpha) ** (epoch + 1)
+                ema_t = (self.ema_alpha * val_loss + (1 - self.ema_alpha) * self.EMA[epoch - 1]) / bias_correction
+            self.EMA.append(ema_t)
 
             # Save metrics for this epoch
             self.metrics_history.append({
@@ -247,6 +265,8 @@ class Trainer:
                 "train_precision": precision,
                 "train_recall": recall,
                 "val_loss": val_loss,
+                "rolling_avg": rolling_avg,
+                "EMA": ema_t,
                 **val_metrics
             })
 
