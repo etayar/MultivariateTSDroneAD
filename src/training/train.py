@@ -271,17 +271,13 @@ class Trainer:
             })
 
             # Save latest checkpoint
-            self.save_model_with_config(
-                epoch + 1, config, val_loss, path=config['checkpoint_epoch_path']
-            )
+            self.save_model_with_config(epoch + 1, config, val_loss, path=config['checkpoint_epoch_path'])
 
             # Save the best model if validation loss improves
             if val_loss < self.best_val_loss:
                 print(f"Validation loss improved from {self.best_val_loss} to {val_loss}. Saving best model...")
                 self.best_val_loss = val_loss
-                self.save_model_with_config(
-                    epoch + 1, config, val_loss, path=config['best_model_path']
-                )
+                self.save_model_with_config(epoch + 1, config, val_loss, path=config['best_model_path'])
 
             # Step the scheduler (if provided)
             if self.scheduler:

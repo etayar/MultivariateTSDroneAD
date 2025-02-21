@@ -52,7 +52,7 @@ def get_criterion(model_config, label_counts):
     return criterion
 
 
-def main(model_config=None, checkpoint_path=None):
+def main(model_config=None, checkpoint_path=None, best_model_path=None):
     # Set device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -103,6 +103,26 @@ def main(model_config=None, checkpoint_path=None):
 
         # Get the starting epoch from the checkpoint
         start_epoch = checkpoint["epoch"]
+        print(f"Resuming training from epoch {start_epoch + 1}")
+    elif best_model_path:
+        # For training on multiple datasets, retrieve the last trained model and resume training from its latest state.
+        print(f"Loading model from best_model.pth: {best_model_path}")
+        best_model = torch.load(best_model_path, map_location=device)
+
+        # Load the configuration from the checkpoint
+        model_config = best_model["config"]
+        model = build_model(model_config=model_config)
+        model.load_state_dict(best_model["model_state_dict"])
+
+        # Define optimizer and scheduler
+        optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+        optimizer.load_state_dict(best_model["optimizer_state_dict"])
+
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
+        scheduler.load_state_dict(best_model["scheduler_state_dict"])
+
+        # Get the starting epoch from the checkpoint
+        start_epoch = 0
         print(f"Resuming training from epoch {start_epoch + 1}")
     else:
         # If no checkpoint is provided, start from scratch
@@ -160,96 +180,103 @@ def main(model_config=None, checkpoint_path=None):
 
 
 if __name__ == "__main__":
-    ####### EXPERIMENTAL DATASETS #########
-    potential_for_AD = [
+    ################### UEA DATASETS ###################
+    UEA_DATASETS = [
         'Heartbeat', 'Handwriting', 'PhonemeSpectra', 'SelfRegulationSCP1', 'EthanolConcentration', 'FaceDetection'
     ]
     experimental_dataset_name = 'Handwriting'
     # experimental_dataset_name = 'Heartbeat'
-    ####### EXPERIMENTAL DATASETS #########
+    ################### UEA DATASETS ###################
 
     # Get the current date in "YYYY-MM-DD" format
     current_date = datetime.now().strftime("%Y-%m-%d")
 
-    # Detect if running in Google Colab
-    if "COLAB_GPU" in os.environ:
-        print("Running in Google Colab - Updating paths!")
-        base_path = "/content/drive/My Drive/My_PHD/My_First_Paper/MultivariateTSDroneAD/ServerMachineDataset/"
-        multilabel_base_path = ""
-        multiclass_base_path = ""
+    multi_class = True
+    for data_set in UEA_DATASETS:
 
-        # Create the directory for today's date if it doesn't exist
-        date_dir = os.path.join("/content/drive/My Drive/My_PHD/My_First_Paper/MultivariateTSDroneAD/src/data/models_metrics", current_date)
-    else:
-        print("Running locally - Using Mac paths.")
-        base_path = "/Users/etayar/PycharmProjects/MultivariateTSDroneAD/ServerMachineDataset/"
-        multilabel_base_path = ""
-        multiclass_base_path = ""
+        if data_set == 'Heartbeat':
+            multi_class = False
 
-        # Create the directory for today's date if it doesn't exist
-        date_dir = os.path.join("src/data/models_metrics", current_date)
+        # Detect if running in Google Colab
+        if "COLAB_GPU" in os.environ:
+            print("Running in Google Colab - Updating paths!")
+            base_path = "/content/drive/My Drive/My_PHD/My_First_Paper/MultivariateTSDroneAD"
+            multilabel_base_path = ""
+            multiclass_base_path = ""
 
-    normal_path = None #os.path.join(base_path, "normal_data")
-    fault_path = None #os.path.join(base_path, "anomalous_data")
+            # Create the directory for today's date if it doesn't exist
+            date_dir = os.path.join("/content/drive/My Drive/My_PHD/My_First_Paper/MultivariateTSDroneAD/src/data/models_metrics", current_date)
+        else:
+            print("Running locally - Using Mac paths.")
+            base_path = "/Users/etayar/PycharmProjects/MultivariateTSDroneAD"
+            multilabel_base_path = ""
+            multiclass_base_path = ""
 
-    multilabel_path = None if not multilabel_base_path else os.path.join(multilabel_base_path, "multilabel_path")
-    multiclass_path = None if not multiclass_base_path else os.path.join(multiclass_base_path, "multiclass_path")
+            # Create the directory for today's date if it doesn't exist
+            date_dir = os.path.join("src/data/models_metrics", current_date)
 
-    os.makedirs(date_dir, exist_ok=True)
+        folder = ""
+        normal_path = None #os.path.join(base_path, folder, "normal_data")
+        fault_path = None #os.path.join(base_path, folder, "anomalous_data")
 
-    checkpoint_path = os.path.join(date_dir, "checkpoint_epoch.pth")
-    best_model_path = os.path.join(date_dir, "best_model.pth")
-    training_res = os.path.join(date_dir, "training.json")
-    test_res = os.path.join(date_dir, "test.json")
+        multilabel_path = None if not multilabel_base_path else os.path.join(multilabel_base_path, "multilabel_path")
+        multiclass_path = None if not multiclass_base_path else os.path.join(multiclass_base_path, "multiclass_path")
 
-    multi_class = True if multilabel_path else False
+        os.makedirs(date_dir, exist_ok=True)
 
-    configs = [
-        {
-            'normal_path': normal_path,
-            'fault_path': fault_path,
-            'multilabel_path': multilabel_path,
-            'multiclass_path': multiclass_path,
-            'checkpoint_epoch_path': checkpoint_path,
-            'best_model_path': best_model_path,
-            'training_res': training_res,
-            'test_res': test_res,
-            'multi_class': True, # binary class' is determined by the number of data classes. Multilabel class' is concluded.
-            'fuser_name': 'ConvFuser2',
-            'blocks': (3, 3, 3, 3, 3, 3, 3),  # The ResNet skip connection blocks
-            'transformer_variant': 'vanilla',  # Choose transformer variant
-            'use_learnable_pe': True,  # Use learnable positional encoding
-            'aggregator': 'conv',  # Use aggregation
-            'num_epochs': 50,
-            'd_model': 365,
-            'nhead': 5,  # # transformer heads
-            'num_layers': 8,  # transformer layers
-            'batch_size': 16,
-            'dropout': 0.1,
-            'learning_rate': 1e-4,
-            'time_scaler': None,  # The portion of T for conv output time-series latent representative
-            'prediction_threshold': 0.5,
-            'split_rates': (0.2, 0.3),
-            'experimental_dataset_name': experimental_dataset_name
-        },
-    ]
+        checkpoint_path = os.path.join(date_dir, "checkpoint_epoch.pth")
+        best_model_path = os.path.join(date_dir, "best_model.pth")
+        training_res = os.path.join(date_dir, "training.json")
+        test_res = os.path.join(date_dir, "test.json")
 
-    load_model = input("Load existing model (strictly yes or no answer)?").lower().strip()
-    while load_model not in ['yes', 'no']:
+        # multi_class = True if multilabel_path else False
+
+        configs = [
+            {
+                'normal_path': normal_path,
+                'fault_path': fault_path,
+                'multilabel_path': multilabel_path,
+                'multiclass_path': multiclass_path,
+                'checkpoint_epoch_path': checkpoint_path,
+                'best_model_path': best_model_path,
+                'training_res': training_res,
+                'test_res': test_res,
+                'multi_class': multi_class, # binary class' is determined by the number of data classes. Multilabel class' is concluded.
+                'fuser_name': 'ConvFuser2',
+                'blocks': (3, 3, 3, 3, 3, 3, 3),  # The ResNet skip connection blocks
+                'transformer_variant': 'vanilla',  # Choose transformer variant
+                'use_learnable_pe': True,  # Use learnable positional encoding
+                'aggregator': 'conv',  # Use aggregation
+                'num_epochs': 50,
+                'd_model': 365,
+                'nhead': 5,  # # transformer heads
+                'num_layers': 8,  # transformer layers
+                'batch_size': 16,
+                'dropout': 0.1,
+                'learning_rate': 1e-4,
+                'time_scaler': None,  # The portion of T for conv output time-series latent representative
+                'prediction_threshold': 0.5,
+                'split_rates': (0.2, 0.3),
+                'experimental_dataset_name': experimental_dataset_name
+            },
+        ]
+
         load_model = input("Load existing model (strictly yes or no answer)?").lower().strip()
-    if load_model == 'no':
-        print("Start training new model.")
-        checkpoint_path = None
+        while load_model not in ['yes', 'no']:
+            load_model = input("Load existing model (strictly yes or no answer)?").lower().strip()
+        if load_model == 'no':
+            print("Start training new model.")
+            checkpoint_path = None
 
-    for config in configs:
-        print(
-            f"d_model: {config['d_model']}\n"
-            f"nhead: {config['nhead']}\n"
-            f"num_layers: {config['num_layers']}\n"
-            f"batch_size: {config['batch_size']}\n"
-            f"dropout: {config['dropout']}\n"
-            f"learning_rate: {config['learning_rate']}\n"
-            f"time_scaler: {config['time_scaler']}\n"
-            f"blocks: {config['blocks']}"
-        )
-        main(config, checkpoint_path=checkpoint_path)
+        for config in configs:
+            print(
+                f"d_model: {config['d_model']}\n"
+                f"nhead: {config['nhead']}\n"
+                f"num_layers: {config['num_layers']}\n"
+                f"batch_size: {config['batch_size']}\n"
+                f"dropout: {config['dropout']}\n"
+                f"learning_rate: {config['learning_rate']}\n"
+                f"time_scaler: {config['time_scaler']}\n"
+                f"blocks: {config['blocks']}"
+            )
+            main(config, checkpoint_path=checkpoint_path)
