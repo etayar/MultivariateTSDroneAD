@@ -73,6 +73,7 @@ def main(model_config=None, checkpoint_path=None):
     num_classes = len(label_counts)
 
     model_config['binary'] = True if num_classes == 2 else False
+    model_config['multi_label'] = False if model_config['binary'] or  model_config['multi_class'] else True
 
     # Define criterion dynamically
     criterion = get_criterion(model_config, label_counts)
@@ -214,8 +215,7 @@ if __name__ == "__main__":
             'best_model_path': best_model_path,
             'training_res': training_res,
             'test_res': test_res,
-            'multi_label': False,
-            'multi_class': True,
+            'multi_class': True, # binary class' is determined by the number of data classes. Multilabel class' is concluded.
             'fuser_name': 'ConvFuser2',
             'blocks': (2, 2, 2, 2, 2),  # The ResNet skip connection blocks
             'transformer_variant': 'vanilla',  # Choose transformer variant
