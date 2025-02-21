@@ -641,31 +641,31 @@ if __name__ == '__main__':
     config = {
         'input_shape': input_tens[0].shape, # <---- This doesn't exist in main file, it is configured in main()
         'normal_path': 'normal_path',
-            'fault_path': 'fault_path',
-            'multilabel_path': 'multilabel_path',
-            'multiclass_path': 'multiclass_path',
-            'checkpoint_epoch_path': 'checkpoint_path',
-            'best_model_path': 'best_model_path',
-            'training_res': 'training_res',
-            'test_res': 'test_res',
-            'binary': True,
-            'multi_label': False,
-            'multi_class': False,
-            'class_neurons_num': 1,  # Depends on the classification task (1 for binary...)
-            'fuser_name': 'ConvFuser2',
-            'blocks': (2, 3, 4, 5),  # The ResNet skip connection blocks
-            'transformer_variant': 'vanilla',  # Choose transformer variant
-            'use_learnable_pe': True,  # Use learnable positional encoding
-            'aggregator': 'conv',  # Use aggregation
-            'num_epochs': 50,
-            'd_model': 256,
-            'nhead': 4,  # # transformer heads
-            'num_layers': 8,  # transformer layers
-            'batch_size': 16,
-            'dropout': 0.14,
-            'learning_rate': 1e-4,
-            'time_scaler': 2.8,  # The portion of T for conv output time-series latent representative
-            'prediction_threshold': 0.5
+        'fault_path': 'fault_path',
+        'multilabel_path': 'multilabel_path',
+        'multiclass_path': 'multiclass_path',
+        'checkpoint_epoch_path': 'checkpoint_path',
+        'best_model_path': 'best_model_path',
+        'training_res': 'training_res',
+        'test_res': 'test_res',
+        'multi_label': False,
+        'multi_class': False,
+        'fuser_name': 'ConvFuser2',
+        'blocks': (2, 2, 2, 2, 2),  # The ResNet skip connection blocks
+        'transformer_variant': 'vanilla',  # Choose transformer variant
+        'use_learnable_pe': True,  # Use learnable positional encoding
+        'aggregator': 'conv',  # Use aggregation
+        'num_epochs': 50,
+        'd_model': 256,
+        'nhead': 4,  # # transformer heads
+        'num_layers': 8,  # transformer layers
+        'batch_size': 16,
+        'dropout': 0.14,
+        'learning_rate': 1e-4,
+        'time_scaler': 2.8,  # The portion of T for conv output time-series latent representative
+        'prediction_threshold': 0.5,
+        'split_rates': (0.2, 0.5),
+        'experimental_dataset_name': 'experimental_dataset_name'
     }
 
     # Build the model with specific configurations
