@@ -130,11 +130,11 @@ def load_uea_multivariate_ts(dataset_name):
 
 
 def load_data(
-        multilabel_path: str = None,
-        multiclass_path: str = None,
-        normal_path: str = None,
-        failure_path: str = None,
-        experimental_dataset_name: str = None
+    multilabel_path: str = None,
+    multiclass_path: str = None,
+    normal_path: str = None,
+    failure_path: str = None,
+    experimental_dataset_name: str = None
 ):
 
     if normal_path:

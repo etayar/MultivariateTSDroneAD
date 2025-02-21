@@ -606,10 +606,11 @@ def build_model(model_config: dict):
     multi_label = model_config['multi_label']
     criterion = model_config['criterion']
 
-    S, T = input_shape
-    S_tag = math.log(S)
-    traget_T = S_tag * T
-    time_scaler = traget_T / T
+    if time_scaler is None:
+        S, T = input_shape
+        S_tag = math.log(S)
+        traget_T = S_tag * T
+        time_scaler = traget_T / T
 
     # Choose CNN fuser dynamically
     if fuser_name == "ConvFuser1":
@@ -639,12 +640,8 @@ def build_model(model_config: dict):
 
 
 if __name__ == '__main__':
-    # Define input dimensions
-    S, T = 64, 640  # Sensors and sequence length
-    input_tens = torch.rand(1, S, T)  # [batch_size, S, T]
 
     config = {
-        'input_shape': input_tens[0].shape, # <---- This doesn't exist in main file, it is configured in main()
         'normal_path': 'normal_path',
         'fault_path': 'fault_path',
         'multilabel_path': 'multilabel_path',
@@ -653,8 +650,7 @@ if __name__ == '__main__':
         'best_model_path': 'best_model_path',
         'training_res': 'training_res',
         'test_res': 'test_res',
-        'multi_label': False,
-        'multi_class': False,
+        'multi_class': True, # binary class' is determined by the number of data classes. Multilabel class' is concluded.
         'fuser_name': 'ConvFuser2',
         'blocks': (2, 2, 2, 2, 2),  # The ResNet skip connection blocks
         'transformer_variant': 'vanilla',  # Choose transformer variant
@@ -667,11 +663,17 @@ if __name__ == '__main__':
         'batch_size': 16,
         'dropout': 0.14,
         'learning_rate': 1e-4,
-        'time_scaler': 2.8,  # The portion of T for conv output time-series latent representative
+        'time_scaler': None,  # The portion of T for conv output time-series latent representative
         'prediction_threshold': 0.5,
         'split_rates': (0.2, 0.5),
         'experimental_dataset_name': 'experimental_dataset_name'
     }
+
+    # Define input dimensions. config['input_shape'] is calculated based on concreate data set inside
+    # the main function in main.py.
+    S, T = 64, 640  # Sensors and sequence length
+    input_tens = torch.rand(1, S, T)  # [batch_size, S, T]
+    config['input_shape'] = input_tens[0].shape
 
     # Build the model with specific configurations
     ad_model = build_model(

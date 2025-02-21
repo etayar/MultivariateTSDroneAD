@@ -161,8 +161,9 @@ def main(model_config=None, checkpoint_path=None):
 
 if __name__ == "__main__":
     ####### EXPERIMENTAL DATASETS #########
-    potential_for_AD = ['Heartbeat', 'Handwriting', 'PhonemeSpectra', 'SelfRegulationSCP1', 'EthanolConcentration',
-                        'FaceDetection']
+    potential_for_AD = [
+        'Heartbeat', 'Handwriting', 'PhonemeSpectra', 'SelfRegulationSCP1', 'EthanolConcentration', 'FaceDetection'
+    ]
     experimental_dataset_name = 'Handwriting'
     # experimental_dataset_name = 'Heartbeat'
     ####### EXPERIMENTAL DATASETS #########
@@ -201,8 +202,6 @@ if __name__ == "__main__":
     training_res = os.path.join(date_dir, "training.json")
     test_res = os.path.join(date_dir, "test.json")
 
-    binary = True if not multilabel_path and not multiclass_path else False
-    multi_label = True if multilabel_path else False
     multi_class = True if multilabel_path else False
 
     configs = [
@@ -228,12 +227,21 @@ if __name__ == "__main__":
             'batch_size': 16,
             'dropout': 0.14,
             'learning_rate': 1e-4,
-            'time_scaler': 2.8,  # The portion of T for conv output time-series latent representative
+            'time_scaler': None,  # The portion of T for conv output time-series latent representative
             'prediction_threshold': 0.5,
             'split_rates': (0.2, 0.5),
             'experimental_dataset_name': experimental_dataset_name
         },
     ]
+
+    load_model = input("Load existing model (strictly yes or no answer)?")
+    while load_model.lower().strip() not in ['yes', 'no']:
+        load_model = input("Load existing model (strictly yes or no answer)?")
+    if load_model == 'yes':
+        checkpoint_path = checkpoint_path
+    else:
+        checkpoint_path = None
+
     for config in configs:
         print(
             f"d_model: {config['d_model']}\n"
@@ -245,4 +253,4 @@ if __name__ == "__main__":
             f"time_scaler: {config['time_scaler']}\n"
             f"blocks: {config['blocks']}"
         )
-        main(config)
+        main(config, checkpoint_path=checkpoint_path)
