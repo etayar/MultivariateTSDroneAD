@@ -293,6 +293,7 @@ class Trainer:
                     path=config['best_model_path'],
                     early_stopping_triggered=True
                 )
+                break  # STOP TRAINING
 
     def save_model_with_config(
             self, epoch, config, val_loss, path, save_usage='best_model', early_stopping_triggered=False
