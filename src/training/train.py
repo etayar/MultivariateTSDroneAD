@@ -78,6 +78,7 @@ class Trainer:
         running_loss = 0
         all_labels = []
         all_predictions = []
+        all_probs = []
 
         for batch in tqdm(dataloader, desc="Training Batches"):
             inputs, labels = batch
@@ -114,10 +115,11 @@ class Trainer:
 
             all_labels.append(labels.cpu())
             all_predictions.append(predictions.cpu())
+            all_probs.append(probs.detach().cpu())  # Detach required to remove computation graph
 
         avg_loss = running_loss / len(dataloader)
 
-        return avg_loss, all_labels, all_predictions
+        return avg_loss, all_labels, all_predictions, all_probs
 
     def evaluate(self, dataloader, device):
         """
@@ -205,13 +207,14 @@ class Trainer:
             print(f"\nEpoch {epoch + 1}/{epochs}")
 
             # Train one epoch
-            train_loss, all_labels, all_predictions = self.train_one_epoch(train_loader, device)
+            train_loss, all_labels, all_predictions, all_probs = self.train_one_epoch(train_loader, device)
 
             # Compute Training Metrics
             all_labels = torch.cat(all_labels).numpy()
             all_predictions = torch.cat(all_predictions).numpy()
+            all_probs = torch.cat(all_probs).numpy()
 
-            accuracy = accuracy_score(all_labels, all_predictions)
+            # accuracy = accuracy_score(all_labels, all_predictions)
             precision = precision_score(all_labels, all_predictions, average="binary" if self.is_binary else "weighted",
                                         zero_division=0)
             recall = recall_score(all_labels, all_predictions, average="binary" if self.is_binary else "weighted",
@@ -219,11 +222,11 @@ class Trainer:
 
             # Compute AUC-ROC
             if self.is_binary:
-                auc_roc = roc_auc_score(all_labels, all_predictions)
+                auc_roc = roc_auc_score(all_labels, all_probs)
             elif self.is_multi_label:
-                auc_roc = roc_auc_score(all_labels, all_predictions, average="macro")
+                auc_roc = roc_auc_score(all_labels, all_probs, average="macro")
             else:
-                auc_roc = roc_auc_score(all_labels, all_predictions, multi_class="ovr")
+                auc_roc = roc_auc_score(all_labels, all_probs, multi_class="ovr")
 
             # Train monitoring
             print(

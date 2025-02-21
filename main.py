@@ -164,8 +164,8 @@ if __name__ == "__main__":
     potential_for_AD = [
         'Heartbeat', 'Handwriting', 'PhonemeSpectra', 'SelfRegulationSCP1', 'EthanolConcentration', 'FaceDetection'
     ]
-    # experimental_dataset_name = 'Handwriting'
-    experimental_dataset_name = 'Heartbeat'
+    experimental_dataset_name = 'Handwriting'
+    # experimental_dataset_name = 'Heartbeat'
     ####### EXPERIMENTAL DATASETS #########
 
     # Get the current date in "YYYY-MM-DD" format
@@ -214,7 +214,7 @@ if __name__ == "__main__":
             'best_model_path': best_model_path,
             'training_res': training_res,
             'test_res': test_res,
-            'multi_class': False, # binary class' is determined by the number of data classes. Multilabel class' is concluded.
+            'multi_class': True, # binary class' is determined by the number of data classes. Multilabel class' is concluded.
             'fuser_name': 'ConvFuser2',
             'blocks': (2, 2, 2, 2, 2),  # The ResNet skip connection blocks
             'transformer_variant': 'vanilla',  # Choose transformer variant
