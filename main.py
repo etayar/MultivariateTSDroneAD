@@ -52,7 +52,7 @@ def get_criterion(model_config, label_counts):
     return criterion
 
 
-def main(model_config):
+def main(model_config, by_checkpoint=False, by_best_model=True):
     # Set device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -84,10 +84,9 @@ def main(model_config):
 
     lr = model_config['learning_rate']
 
-    checkpoint_path = model_config['checkpoint_epoch_path']
-    best_model_path = model_config['best_model_path']
     # Initialize model
-    if checkpoint_path: # If a checkpoint is provided, due to previous training interruption, load it
+    if by_checkpoint: # If a checkpoint is provided, due to previous training interruption, load it
+        checkpoint_path = model_config['checkpoint_epoch_path']
         print(f"Loading model from checkpoint: {checkpoint_path}")
         checkpoint = torch.load(checkpoint_path, map_location=device)
 
@@ -106,7 +105,8 @@ def main(model_config):
         # Get the starting epoch from the checkpoint
         start_epoch = checkpoint["epoch"]
         print(f"Resuming training from epoch {start_epoch + 1}")
-    elif best_model_path:
+    elif by_best_model:
+        best_model_path = model_config['best_model_path']
         # For training on multiple datasets, retrieve the last trained model and resume training from its latest state.
         print(f"Loading model from best_model.pth: {best_model_path}")
         best_model = torch.load(best_model_path, map_location=device)
@@ -193,97 +193,100 @@ if __name__ == "__main__":
     # Get the current date in "YYYY-MM-DD" format
     current_date = datetime.now().strftime("%Y-%m-%d")
 
+    # Detect if running in Google Colab
+    if "COLAB_GPU" in os.environ:
+        print("Running in Google Colab - Updating paths!")
+        base_path = "/content/drive/My Drive/My_PHD/My_First_Paper/MultivariateTSDroneAD"
+        multilabel_base_path = ""
+        multiclass_base_path = ""
+
+        # Create the directory for today's date if it doesn't exist
+        date_dir = os.path.join(
+            "/content/drive/My Drive/My_PHD/My_First_Paper/MultivariateTSDroneAD/src/data/models_metrics", current_date)
+    else:
+        print("Running locally - Using Mac paths.")
+        base_path = "/Users/etayar/PycharmProjects/MultivariateTSDroneAD"
+        multilabel_base_path = ""
+        multiclass_base_path = ""
+
+        # Create the directory for today's date if it doesn't exist
+        date_dir = os.path.join("src/data/models_metrics", current_date)
+
+    folder = ""
+    normal_path = None  # os.path.join(base_path, folder, "normal_data")
+    fault_path = None  # os.path.join(base_path, folder, "anomalous_data")
+
+    multilabel_path = None if not multilabel_base_path else os.path.join(multilabel_base_path, "multilabel_path")
+    multiclass_path = None if not multiclass_base_path else os.path.join(multiclass_base_path, "multiclass_path")
+
+    os.makedirs(date_dir, exist_ok=True)
+
+    checkpoint_path = os.path.join(date_dir, "checkpoint_epoch.pth")
+    best_model_path = os.path.join(date_dir, "best_model.pth")
+    training_res = os.path.join(date_dir, "training.json")
+    test_res = os.path.join(date_dir, "test.json")
+
     retrieve_last_training_session = False
     multiple_data_sets_training_mode = True
     training_sets = UEA_DATASETS if multiple_data_sets_training_mode else [experimental_dataset_name]
 
     multi_class = True
-    for data_set in training_sets:
+    for ds_num, data_set in enumerate(training_sets):
 
         if data_set == 'Heartbeat':
             multi_class = False
 
-        # Detect if running in Google Colab
-        if "COLAB_GPU" in os.environ:
-            print("Running in Google Colab - Updating paths!")
-            base_path = "/content/drive/My Drive/My_PHD/My_First_Paper/MultivariateTSDroneAD"
-            multilabel_base_path = ""
-            multiclass_base_path = ""
-
-            # Create the directory for today's date if it doesn't exist
-            date_dir = os.path.join("/content/drive/My Drive/My_PHD/My_First_Paper/MultivariateTSDroneAD/src/data/models_metrics", current_date)
-        else:
-            print("Running locally - Using Mac paths.")
-            base_path = "/Users/etayar/PycharmProjects/MultivariateTSDroneAD"
-            multilabel_base_path = ""
-            multiclass_base_path = ""
-
-            # Create the directory for today's date if it doesn't exist
-            date_dir = os.path.join("src/data/models_metrics", current_date)
-
-        folder = ""
-        normal_path = None #os.path.join(base_path, folder, "normal_data")
-        fault_path = None #os.path.join(base_path, folder, "anomalous_data")
-
-        multilabel_path = None if not multilabel_base_path else os.path.join(multilabel_base_path, "multilabel_path")
-        multiclass_path = None if not multiclass_base_path else os.path.join(multiclass_base_path, "multiclass_path")
-
-        os.makedirs(date_dir, exist_ok=True)
-
-        checkpoint_path = os.path.join(date_dir, "checkpoint_epoch.pth") if retrieve_last_training_session else None
-        best_model_path = os.path.join(date_dir, "best_model.pth") if multiple_data_sets_training_mode else None
-        training_res = os.path.join(date_dir, "training.json")
-        test_res = os.path.join(date_dir, "test.json")
-
         # multi_class = True if multilabel_path else False
 
-        configs = [
-            {
-                'normal_path': normal_path,
-                'fault_path': fault_path,
-                'multilabel_path': multilabel_path,
-                'multiclass_path': multiclass_path,
-                'checkpoint_epoch_path': checkpoint_path,
-                'best_model_path': best_model_path,
-                'training_res': training_res,
-                'test_res': test_res,
-                'multi_class': multi_class, # binary class' is determined by the number of data classes. Multilabel class' is concluded.
-                'fuser_name': 'ConvFuser2',
-                'blocks': tuple([2 for _ in range(5)]),  # The ResNet skip connection blocks
-                'transformer_variant': 'vanilla',  # Choose transformer variant
-                'use_learnable_pe': True,  # Use learnable positional encoding
-                'aggregator': 'conv',  # Use aggregation
-                'num_epochs': 50,
-                'd_model': 512,
-                'nhead': 8,  # # transformer heads
-                'num_layers': 10,  # transformer layers
-                'batch_size': 16,
-                'dropout': 0.1,
-                'learning_rate': 1e-4,
-                'time_scaler': None,  # The portion of T for conv output time-series latent representative
-                'prediction_threshold': 0.5,
-                'split_rates': (0.2, 0.3),
-                'experimental_dataset_name': data_set
-            },
-        ]
+        config = {
+            'normal_path': normal_path,
+            'fault_path': fault_path,
+            'multilabel_path': multilabel_path,
+            'multiclass_path': multiclass_path,
+            'checkpoint_epoch_path': checkpoint_path,
+            'best_model_path': best_model_path,
+            'training_res': training_res,
+            'test_res': test_res,
+            'multi_class': multi_class,
+            # binary class' is determined by the number of data classes. Multilabel class' is concluded.
+            'fuser_name': 'ConvFuser2',
+            'blocks': tuple([2 for _ in range(5)]),  # The ResNet skip connection blocks
+            'transformer_variant': 'vanilla',  # Choose transformer variant
+            'use_learnable_pe': True,  # Use learnable positional encoding
+            'aggregator': 'conv',  # Use aggregation
+            'num_epochs': 50,
+            'd_model': 512,
+            'nhead': 8,  # # transformer heads
+            'num_layers': 10,  # transformer layers
+            'batch_size': 16,
+            'dropout': 0.1,
+            'learning_rate': 1e-4,
+            'time_scaler': None,  # The portion of T for conv output time-series latent representative
+            'prediction_threshold': 0.5,
+            'split_rates': (0.2, 0.3),
+            'experimental_dataset_name': data_set
+        }
 
-        load_model = input("Load existing model (strictly yes or no answer)?").lower().strip()
-        while load_model not in ['yes', 'no']:
-            load_model = input("Load existing model (strictly yes or no answer)?").lower().strip()
-        if load_model == 'no':
-            print("Start training new model.")
-            checkpoint_path = None
+        print(
+            f"d_model: {config['d_model']}\n"
+            f"nhead: {config['nhead']}\n"
+            f"num_layers: {config['num_layers']}\n"
+            f"batch_size: {config['batch_size']}\n"
+            f"dropout: {config['dropout']}\n"
+            f"learning_rate: {config['learning_rate']}\n"
+            f"time_scaler: {config['time_scaler']}\n"
+            f"multi_class: {config['multi_class']}\n"
+            f"blocks: {config['blocks']}"
+        )
 
-        for config in configs:
-            print(
-                f"d_model: {config['d_model']}\n"
-                f"nhead: {config['nhead']}\n"
-                f"num_layers: {config['num_layers']}\n"
-                f"batch_size: {config['batch_size']}\n"
-                f"dropout: {config['dropout']}\n"
-                f"learning_rate: {config['learning_rate']}\n"
-                f"time_scaler: {config['time_scaler']}\n"
-                f"multi_class: {config['multi_class']}\n"
-                f"blocks: {config['blocks']}"
-            )
-            main(config)
+        by_best_model = True if multiple_data_sets_training_mode and ds_num > 0 else None
+        by_checkpoint = True if retrieve_last_training_session else None
+
+        # load_model = input("Load existing model (strictly yes or no answer)?").lower().strip()
+        # while load_model not in ['yes', 'no']:
+        #     load_model = input("Load existing model (strictly yes or no answer)?").lower().strip()
+        # if load_model == 'no':
+        #     print("Start training new model.")
+        #     by_checkpoint = None
+
+        main(config, by_checkpoint=by_checkpoint, by_best_model=by_best_model)
