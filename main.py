@@ -156,6 +156,8 @@ def main(model_config, by_checkpoint=False, by_best_model=True):
         in_features = model.fc2.in_features
         model.fc2 = nn.Linear(in_features, new_class_neurons_num)
 
+        model.to(device)
+
         # Load only matching parameters from checkpoint
         model_state_dict = model.state_dict()
         checkpoint_state_dict = best_model["model_state_dict"]
