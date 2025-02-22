@@ -91,6 +91,7 @@ def main(model_config, by_checkpoint=False, by_best_model=True):
     model_config['class_neurons_num'] = 1 if num_classes == 2 else num_classes
 
     lr = model_config['learning_rate']
+    weight_decay = model_config['weight_decay']
     num_epochs = model_config['num_epochs']
 
     # Initialize model
@@ -116,7 +117,7 @@ def main(model_config, by_checkpoint=False, by_best_model=True):
         model.to(device)
 
         # Reinitialize optimizer and load its state
-        optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=1e-4)
+        optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
         optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
 
         # Reinitialize scheduler and load its state
@@ -172,7 +173,7 @@ def main(model_config, by_checkpoint=False, by_best_model=True):
                 layer.reset_running_stats()
 
         # Reinitialize the optimizer
-        optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=1e-4)
+        optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
         # Reinitialize the scheduler (with cosine annealing)
         scheduler = CosineAnnealingLR(optimizer, T_max=num_epochs, eta_min=1e-6)
 
@@ -183,7 +184,7 @@ def main(model_config, by_checkpoint=False, by_best_model=True):
         model = build_model(model_config=model_config)
         model.to(device)
 
-        optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=1e-4)
+        optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
         scheduler = CosineAnnealingLR(optimizer, T_max=num_epochs, eta_min=1e-6)
 
         start_epoch = 0  # Start from the first epoch
@@ -298,17 +299,18 @@ if __name__ == "__main__":
             'test_res': test_res,
             'multi_class': multi_class, # binary class' is determined by the number of data classes. Multilabel class' is concluded.
             'fuser_name': 'ConvFuser2',
-            'blocks': (2, 2),  # The ResNet skip connection blocks
+            'blocks': (3, 4, 6, 3),  # The ResNet skip connection blocks
             'transformer_variant': 'performer',  # Choose transformer variant
             'use_learnable_pe': True,  # Use learnable positional encoding
             'aggregator': 'conv',  # Use aggregation
-            'num_epochs': 2,
-            'd_model': 64,
-            'nhead': 4,  # # transformer heads
-            'num_layers': 2,  # transformer layers
+            'num_epochs': 50,
+            'd_model': 512,
+            'nhead': 8,  # # transformer heads
+            'num_layers': 8,  # transformer layers
             'batch_size': 16,
-            'dropout': 0.05,
+            'dropout': 0.25,
             'learning_rate': 1e-4,
+            'weight_decay': 1e-4,
             'time_scaler': None,  # The portion of T for conv output time-series latent representative
             'prediction_threshold': 0.5,
             'split_rates': (0.2, 0.3),
