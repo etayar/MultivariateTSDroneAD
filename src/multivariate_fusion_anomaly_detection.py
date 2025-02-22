@@ -511,7 +511,7 @@ class MultivariateTSAD(nn.Module):
         # Fully connected layers
         self.fc1 = nn.Linear(d_model, 128)
         self.activation1 = nn.LeakyReLU(0.01)
-        self.batch_norm = nn.BatchNorm1d(128)
+        self.batch_norm = nn.BatchNorm1d(scaled_T)
         self.layer_norm = nn.LayerNorm(128)  # Alternative normalization
         self.fc2 = nn.Linear(128, class_neurons_num)  # Output logits
 
@@ -650,7 +650,7 @@ if __name__ == '__main__':
         'test_res': 'test_res',
         'multi_class': True, # binary class' is determined by the number of data classes. Multilabel class' is concluded.
         'fuser_name': 'ConvFuser2',
-        'blocks': tuple([3 for _ in range(12)]),  # The ResNet skip connection blocks
+        'blocks': (3, 4, 6, 3),  # The ResNet skip connection blocks
         'transformer_variant': 'vanilla',  # Choose transformer variant
         'use_learnable_pe': True,  # Use learnable positional encoding
         'aggregator': 'conv',  # Use aggregation
