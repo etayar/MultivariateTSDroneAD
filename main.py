@@ -257,7 +257,7 @@ if __name__ == "__main__":
                 'time_scaler': None,  # The portion of T for conv output time-series latent representative
                 'prediction_threshold': 0.5,
                 'split_rates': (0.2, 0.3),
-                'experimental_dataset_name': experimental_dataset_name
+                'experimental_dataset_name': data_set
             },
         ]
 
@@ -277,6 +277,7 @@ if __name__ == "__main__":
                 f"dropout: {config['dropout']}\n"
                 f"learning_rate: {config['learning_rate']}\n"
                 f"time_scaler: {config['time_scaler']}\n"
+                f"multi_class: {config['multi_class']}\n"
                 f"blocks: {config['blocks']}"
             )
             main(config, checkpoint_path=checkpoint_path)
