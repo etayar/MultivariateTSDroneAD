@@ -511,8 +511,10 @@ class MultivariateTSAD(nn.Module):
         # Fully connected layers
         self.fc1 = nn.Linear(d_model, 128)
         self.activation1 = nn.LeakyReLU(0.01)
-        self.batch_norm = nn.BatchNorm1d(scaled_T)
-        self.layer_norm = nn.LayerNorm(128)  # Alternative normalization
+        self.layer_norm1 = nn.LayerNorm(d_model)  # Before Transformer
+        self.layer_norm2 = nn.LayerNorm(d_model)  # After Transformer
+        self.layer_norm3 = nn.LayerNorm(d_model)  # Before MLP
+        self.layer_norm4 = nn.LayerNorm(128)  # After first FC layer
         self.fc2 = nn.Linear(128, class_neurons_num)  # Output logits
 
         # Modular activation function (Sigmoid or Softmax based on loss)
@@ -531,11 +533,11 @@ class MultivariateTSAD(nn.Module):
         x = self.conv_fuser(x)  # Shape: [batch_size, T, 1, 1]
         x = x.squeeze(-1)  # Squeeze: [batch_size, T, 1]
 
-        x = self.batch_norm(x)
-
         # Map to embedding space and add positional encoding
         x = self.embedding(x)  # Shape: [batch_size, T, d_model]
         x = self.pos_encoding(x)
+
+        x = self.layer_norm1(x)
 
         # Transpose for transformer: [batch_size, T, d_model] -> [T, batch_size, d_model]
         x = x.permute(1, 0, 2)
@@ -546,14 +548,18 @@ class MultivariateTSAD(nn.Module):
             x = x.last_hidden_state  # Shape: [batch_size, T, d_model]
             x = x.permute(1, 0, 2)  # Match shape for aggregator: [T, batch_size, d_model]
 
+        x = self.layer_norm2(x)
+
         # Aggregate the sequence dimension using the specified aggregator
         x = self.aggregator(x)  # Shape: [batch_size, d_model]
+
+        x = self.layer_norm3(x)
 
         # Pass through fully connected layer
         x = self.fc1(x)
         x = self.activation1(x)
 
-        x = self.layer_norm(x)
+        x = self.layer_norm4(x)
 
         x = self.fc2(x)  # Compute logits
         x = x.view(-1, 1) if x.shape[-1] == 1 else x  # Ensure logits shape is correct
