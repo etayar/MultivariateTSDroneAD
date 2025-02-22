@@ -123,7 +123,7 @@ class ResNet2D(BaseConvFuser):
 
         for i in range(len(blocks)):
             stride = 1 if i == 0 else 2  # First layer keeps stride=1, others use stride=2
-            out_channels = in_channels * 2  # Double the channels each time
+            out_channels = int(in_channels * 1.1)  # Double the channels each time
             self.layers.append(self._make_layer(in_channels, out_channels, blocks[i], stride=stride))
             in_channels = out_channels  # Update in_channels after each layer
 
@@ -652,7 +652,7 @@ if __name__ == '__main__':
         'test_res': 'test_res',
         'multi_class': True, # binary class' is determined by the number of data classes. Multilabel class' is concluded.
         'fuser_name': 'ConvFuser2',
-        'blocks': tuple([3 for _ in range(5)]),  # The ResNet skip connection blocks
+        'blocks': tuple([3 for _ in range(12)]),  # The ResNet skip connection blocks
         'transformer_variant': 'vanilla',  # Choose transformer variant
         'use_learnable_pe': True,  # Use learnable positional encoding
         'aggregator': 'conv',  # Use aggregation
@@ -672,7 +672,7 @@ if __name__ == '__main__':
     # Define input dimensions. config['input_shape'] is calculated based on concreate data set inside
     # the main function in main.py.
     S, T = 64, 640  # Sensors and sequence length
-    input_tens = torch.rand(1, S, T)  # [batch_size, S, T]
+    input_tens = torch.rand(2, S, T)  # [batch_size, S, T]
     config['input_shape'] = input_tens[0].shape
     config['class_neurons_num'] = 1
     config['multi_label'] = False
