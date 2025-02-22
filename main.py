@@ -127,7 +127,7 @@ def main(model_config, by_checkpoint=False, by_best_model=True):
         start_epoch = checkpoint["epoch"] + 1  # Start from the next epoch
         print(f"Resuming training from epoch {start_epoch}")
     elif by_best_model:
-        best_model_path = model_config['best_model_path']
+        best_model_path = model_config['previous_dataset_path']
         print(f"Loading model from best_model.pth: {best_model_path}")
         best_model = torch.load(best_model_path, map_location=device)
 
@@ -271,6 +271,7 @@ if __name__ == "__main__":
     multiple_data_sets_training_mode = True
     training_sets = UEA_DATASETS if multiple_data_sets_training_mode else [experimental_dataset_name]
 
+    previous_dataset_path = ''
     for ds_num, k_v in enumerate(training_sets.items()):
         data_set, task = k_v
 
@@ -291,18 +292,19 @@ if __name__ == "__main__":
             'multiclass_path': multiclass_path,
             'checkpoint_epoch_path': checkpoint_path,
             'best_model_path': best_model_path,
+            'previous_dataset_path': previous_dataset_path,
             'training_res': training_res,
             'test_res': test_res,
             'multi_class': multi_class, # binary class' is determined by the number of data classes. Multilabel class' is concluded.
             'fuser_name': 'ConvFuser2',
-            'blocks': (3, 4, 6, 3),  # The ResNet skip connection blocks
+            'blocks': (2, 2),  # The ResNet skip connection blocks
             'transformer_variant': 'performer',  # Choose transformer variant
             'use_learnable_pe': True,  # Use learnable positional encoding
             'aggregator': 'conv',  # Use aggregation
-            'num_epochs': 50,
-            'd_model': 512,
-            'nhead': 8,  # # transformer heads
-            'num_layers': 8,  # transformer layers
+            'num_epochs': 2,
+            'd_model': 128,
+            'nhead': 4,  # # transformer heads
+            'num_layers': 2,  # transformer layers
             'batch_size': 16,
             'dropout': 0.05,
             'learning_rate': 1e-4,
@@ -335,3 +337,4 @@ if __name__ == "__main__":
         #     by_checkpoint = None
 
         main(config, by_checkpoint=by_checkpoint, by_best_model=by_best_model)
+        previous_dataset_path = best_model_path
