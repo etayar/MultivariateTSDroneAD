@@ -303,7 +303,7 @@ if __name__ == "__main__":
             'test_res': test_res,
             'multi_class': multi_class, # binary class' is determined by the number of data classes. Multilabel class' is concluded.
             'fuser_name': 'ConvFuser2',
-            'blocks': tuple([2 for _ in range(5)]),  # The ResNet skip connection blocks
+            'blocks': tuple([3 for _ in range(5)]),  # The ResNet skip connection blocks
             'transformer_variant': 'vanilla',  # Choose transformer variant
             'use_learnable_pe': True,  # Use learnable positional encoding
             'aggregator': 'conv',  # Use aggregation
