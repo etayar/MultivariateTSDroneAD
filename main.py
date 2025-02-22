@@ -301,7 +301,7 @@ if __name__ == "__main__":
             'transformer_variant': 'performer',  # Choose transformer variant
             'use_learnable_pe': True,  # Use learnable positional encoding
             'aggregator': 'conv',  # Use aggregation
-            'num_epochs': 2,
+            'num_epochs': 50,
             'd_model': 512,
             'nhead': 8,  # # transformer heads
             'num_layers': 8,  # transformer layers
