@@ -5,6 +5,7 @@ from src.data.data_loader import load_and_split_time_series_data
 from src.training.train import Trainer
 from src.multivariate_fusion_anomaly_detection import build_model
 import torch
+from torch import nn
 
 
 def save_metrics(metrics_history, metrics_file_path):
@@ -70,6 +71,12 @@ def main(model_config, by_checkpoint=False, by_best_model=True):
         random_state=42,
         **kwargs
     )
+
+    sample_batch = next(iter(train_loader))  # Dynamically infer input shape from a batch
+    inputs, _ = sample_batch
+    input_shape = inputs.shape[1:]  # Exclude batch size
+    model_config['input_shape'] = input_shape
+
     num_classes = len(label_counts)
 
     model_config['binary'] = True if num_classes == 2 else False
@@ -85,53 +92,99 @@ def main(model_config, by_checkpoint=False, by_best_model=True):
     lr = model_config['learning_rate']
 
     # Initialize model
-    if by_checkpoint: # If a checkpoint is provided, due to previous training interruption, load it
+    if by_checkpoint:
+        # If training was interrupted, resume from checkpoint. It can't deal with multiple datasets training.
         checkpoint_path = model_config['checkpoint_epoch_path']
         print(f"Loading model from checkpoint: {checkpoint_path}")
+
+        # Load checkpoint
         checkpoint = torch.load(checkpoint_path, map_location=device)
 
-        # Load the configuration from the checkpoint
+        # Ensure the checkpoint contains the necessary keys
+        required_keys = ["config", "model_state_dict", "optimizer_state_dict", "scheduler_state_dict", "epoch"]
+        for key in required_keys:
+            assert key in checkpoint, f"Checkpoint is missing key: {key}"
+
+        # Load the model configuration from the checkpoint
         model_config = checkpoint["config"]
+
+        # Build the model and load weights
         model = build_model(model_config=model_config)
         model.load_state_dict(checkpoint["model_state_dict"])
 
-        # Define optimizer and scheduler
+        # Move model to the correct device
+        model.to(device)
+
+        # Reinitialize optimizer and load its state
         optimizer = torch.optim.Adam(model.parameters(), lr=lr)
         optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
 
+        # Reinitialize scheduler and load its state
         scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
         scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
 
-        # Get the starting epoch from the checkpoint
-        start_epoch = checkpoint["epoch"]
-        print(f"Resuming training from epoch {start_epoch + 1}")
+        # Resume training from the last saved epoch
+        start_epoch = checkpoint["epoch"] + 1  # Start from the next epoch
+        print(f"Resuming training from epoch {start_epoch}")
     elif by_best_model:
         best_model_path = model_config['best_model_path']
-        # For training on multiple datasets, retrieve the last trained model and resume training from its latest state.
         print(f"Loading model from best_model.pth: {best_model_path}")
         best_model = torch.load(best_model_path, map_location=device)
 
-        # Load the configuration from the checkpoint
-        model_config = best_model["config"]
+        # Load the model
         model = build_model(model_config=model_config)
-        model.load_state_dict(best_model["model_state_dict"])
 
-        # Define optimizer and scheduler
+        # Update layers that depend on T_i and class count
+        new_T_i = input_shape[1]  # Get time steps from dataset config
+        new_class_neurons_num = model_config["class_neurons_num"]
+
+        # Compute new projection layer output size
+        new_projection_out_channels = int(model.time_scaler * new_T_i)
+
+        existing_projection_layer = model.conv_fuser.projection[0]  # First layer in Sequential
+        in_channels = existing_projection_layer.in_channels  # Extract in_channels
+
+        # Replace Projection Layer
+        model.conv_fuser.projection = nn.Sequential(
+            nn.Conv2d(in_channels, new_projection_out_channels, kernel_size=1),
+            nn.AdaptiveAvgPool2d((1, 1))
+        )
+
+        # Replace Fully Connected Layer (fc2) for classification
+        in_features = model.fc2.in_features
+        model.fc2 = nn.Linear(in_features, new_class_neurons_num)
+
+        # Load only matching parameters from checkpoint
+        model_state_dict = model.state_dict()
+        checkpoint_state_dict = best_model["model_state_dict"]
+
+        filtered_checkpoint_state = {
+            k: v for k, v in checkpoint_state_dict.items() if
+            k in model_state_dict and model_state_dict[k].shape == v.shape
+        }
+        model_state_dict.update(filtered_checkpoint_state)
+        model.load_state_dict(model_state_dict, strict=False)  # strict=False allows skipping mismatches
+
+        # Reset BatchNorm stats if needed
+        for layer in model.modules():
+            if isinstance(layer, nn.BatchNorm2d) or isinstance(layer, nn.BatchNorm1d):
+                layer.reset_running_stats()
+
+        # Reinitialize the optimizer (important after modifying layers!)
         optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-        optimizer.load_state_dict(best_model["optimizer_state_dict"])
 
+        # Reinitialize the scheduler (to avoid issues with changed optimizer)
         scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
-        scheduler.load_state_dict(best_model["scheduler_state_dict"])
 
-        # Get the starting epoch from the checkpoint
+        # Reset start epoch
         start_epoch = 0
         print(f"Resuming training from epoch {start_epoch + 1}")
     else:
         # If no checkpoint is provided, start from scratch
-        sample_batch = next(iter(train_loader)) # Dynamically infer input shape from a batch
-        inputs, _ = sample_batch
-        input_shape = inputs.shape[1:]  # Exclude batch size
-        model_config['input_shape'] = input_shape
+        # sample_batch = next(iter(train_loader)) # Dynamically infer input shape from a batch
+        # inputs, _ = sample_batch
+        # input_shape = inputs.shape[1:]  # Exclude batch size
+        # model_config['input_shape'] = input_shape
         model = build_model(model_config=model_config)
 
         model.to(device)
@@ -165,7 +218,7 @@ def main(model_config, by_checkpoint=False, by_best_model=True):
         epochs=model_config['num_epochs'],
         config=model_config,
         start_epoch=start_epoch,
-        patience=7
+        patience=5
     )
 
     # Save training metrics
@@ -183,9 +236,14 @@ def main(model_config, by_checkpoint=False, by_best_model=True):
 
 if __name__ == "__main__":
     ################### UEA DATASETS ###################
-    UEA_DATASETS = [
-        'Heartbeat', 'Handwriting', 'PhonemeSpectra', 'SelfRegulationSCP1', 'EthanolConcentration', 'FaceDetection'
-    ]
+    UEA_DATASETS = {
+        'Heartbeat': 'binary',
+        'Handwriting': 'multiclass',
+        'PhonemeSpectra': 'multiclass',
+        'SelfRegulationSCP1': 'multiclass',
+        'EthanolConcentration': 'multiclass',
+        'FaceDetection': 'multiclass'
+    }
     experimental_dataset_name = 'Handwriting'
     # experimental_dataset_name = 'Heartbeat'
     ################### UEA DATASETS ###################
@@ -230,13 +288,9 @@ if __name__ == "__main__":
     multiple_data_sets_training_mode = True
     training_sets = UEA_DATASETS if multiple_data_sets_training_mode else [experimental_dataset_name]
 
-    multi_class = True
-    for ds_num, data_set in enumerate(training_sets):
-
-        if data_set == 'Heartbeat':
-            multi_class = False
-
-        # multi_class = True if multilabel_path else False
+    for ds_num, k_v in enumerate(training_sets.items()):
+        data_set, task = k_v
+        multi_class = True if task == 'multiclass' else False
 
         config = {
             'normal_path': normal_path,
@@ -247,14 +301,13 @@ if __name__ == "__main__":
             'best_model_path': best_model_path,
             'training_res': training_res,
             'test_res': test_res,
-            'multi_class': multi_class,
-            # binary class' is determined by the number of data classes. Multilabel class' is concluded.
+            'multi_class': multi_class, # binary class' is determined by the number of data classes. Multilabel class' is concluded.
             'fuser_name': 'ConvFuser2',
             'blocks': tuple([2 for _ in range(5)]),  # The ResNet skip connection blocks
             'transformer_variant': 'vanilla',  # Choose transformer variant
             'use_learnable_pe': True,  # Use learnable positional encoding
             'aggregator': 'conv',  # Use aggregation
-            'num_epochs': 50,
+            'num_epochs': 2,
             'd_model': 512,
             'nhead': 8,  # # transformer heads
             'num_layers': 10,  # transformer layers
