@@ -260,7 +260,7 @@ if __name__ == "__main__":
 
         # Create the directory for today's date if it doesn't exist
         date_dir = os.path.join(
-            "/content/drive/My Drive/My_PHD/My_First_Paper/MultivariateTSDroneAD/models_metrics", current_date)
+            "/content/drive/My Drive/My_PHD/My_First_Paper/models_metrics", current_date)
     else:
         print("Running locally - Using Mac paths.")
         base_path = "/Users/etayar/PycharmProjects/MultivariateTSDroneAD"
