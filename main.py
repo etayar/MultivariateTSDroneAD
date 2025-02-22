@@ -133,6 +133,7 @@ def main(model_config, by_checkpoint=False, by_best_model=True):
 
         # Load the model
         model = build_model(model_config=model_config)
+        model.to(device)
 
         # Update layers that depend on T_i and class count
         new_T_i = input_shape[1]  # Get time steps from dataset config
@@ -297,14 +298,14 @@ if __name__ == "__main__":
             'test_res': test_res,
             'multi_class': multi_class, # binary class' is determined by the number of data classes. Multilabel class' is concluded.
             'fuser_name': 'ConvFuser2',
-            'blocks': (3, 4, 6, 3),  # The ResNet skip connection blocks
+            'blocks': (2, 2),  # The ResNet skip connection blocks
             'transformer_variant': 'performer',  # Choose transformer variant
             'use_learnable_pe': True,  # Use learnable positional encoding
             'aggregator': 'conv',  # Use aggregation
-            'num_epochs': 50,
-            'd_model': 512,
-            'nhead': 8,  # # transformer heads
-            'num_layers': 8,  # transformer layers
+            'num_epochs': 2,
+            'd_model': 64,
+            'nhead': 4,  # # transformer heads
+            'num_layers': 2,  # transformer layers
             'batch_size': 16,
             'dropout': 0.05,
             'learning_rate': 1e-4,
