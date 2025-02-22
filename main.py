@@ -6,6 +6,7 @@ from src.training.train import Trainer
 from src.multivariate_fusion_anomaly_detection import build_model
 import torch
 from torch import nn
+from torch.optim.lr_scheduler import CosineAnnealingLR
 
 
 def save_metrics(metrics_history, metrics_file_path):
@@ -90,6 +91,7 @@ def main(model_config, by_checkpoint=False, by_best_model=True):
     model_config['class_neurons_num'] = 1 if num_classes == 2 else num_classes
 
     lr = model_config['learning_rate']
+    num_epochs = model_config['num_epochs']
 
     # Initialize model
     if by_checkpoint:
@@ -111,16 +113,14 @@ def main(model_config, by_checkpoint=False, by_best_model=True):
         # Build the model and load weights
         model = build_model(model_config=model_config)
         model.load_state_dict(checkpoint["model_state_dict"])
-
-        # Move model to the correct device
         model.to(device)
 
         # Reinitialize optimizer and load its state
-        optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+        optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=1e-4)
         optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
 
         # Reinitialize scheduler and load its state
-        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
+        scheduler = CosineAnnealingLR(optimizer, T_max=num_epochs, eta_min=1e-6)
         scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
 
         # Resume training from the last saved epoch
@@ -170,30 +170,20 @@ def main(model_config, by_checkpoint=False, by_best_model=True):
             if isinstance(layer, nn.BatchNorm2d) or isinstance(layer, nn.BatchNorm1d):
                 layer.reset_running_stats()
 
-        # Reinitialize the optimizer (important after modifying layers!)
-        optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-
-        # Reinitialize the scheduler (to avoid issues with changed optimizer)
-        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
+        # Reinitialize the optimizer
+        optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=1e-4)
+        # Reinitialize the scheduler (with cosine annealing)
+        scheduler = CosineAnnealingLR(optimizer, T_max=num_epochs, eta_min=1e-6)
 
         # Reset start epoch
         start_epoch = 0
         print(f"Resuming training from epoch {start_epoch + 1}")
     else:
-        # If no checkpoint is provided, start from scratch
-        # sample_batch = next(iter(train_loader)) # Dynamically infer input shape from a batch
-        # inputs, _ = sample_batch
-        # input_shape = inputs.shape[1:]  # Exclude batch size
-        # model_config['input_shape'] = input_shape
         model = build_model(model_config=model_config)
-
         model.to(device)
 
-        # Define optimizer and scheduler
-        optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, mode="min", patience=3, factor=0.1, verbose=True
-        )
+        optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=1e-4)
+        scheduler = CosineAnnealingLR(optimizer, T_max=num_epochs, eta_min=1e-6)
 
         start_epoch = 0  # Start from the first epoch
 
@@ -312,9 +302,9 @@ if __name__ == "__main__":
             'num_epochs': 50,
             'd_model': 512,
             'nhead': 8,  # # transformer heads
-            'num_layers': 10,  # transformer layers
+            'num_layers': 8,  # transformer layers
             'batch_size': 16,
-            'dropout': 0.1,
+            'dropout': 0.05,
             'learning_rate': 1e-4,
             'time_scaler': None,  # The portion of T for conv output time-series latent representative
             'prediction_threshold': 0.5,
