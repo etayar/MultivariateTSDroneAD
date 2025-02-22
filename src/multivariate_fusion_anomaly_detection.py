@@ -531,6 +531,8 @@ class MultivariateTSAD(nn.Module):
         x = self.conv_fuser(x)  # Shape: [batch_size, T, 1, 1]
         x = x.squeeze(-1)  # Squeeze: [batch_size, T, 1]
 
+        x = self.batch_norm(x)
+
         # Map to embedding space and add positional encoding
         x = self.embedding(x)  # Shape: [batch_size, T, d_model]
         x = self.pos_encoding(x)
@@ -551,11 +553,7 @@ class MultivariateTSAD(nn.Module):
         x = self.fc1(x)
         x = self.activation1(x)
 
-        # Automatically use LayerNorm if batch size is small
-        if x.shape[0] <= 16:  # Adjust this threshold as needed
-            x = self.layer_norm(x)
-        else:
-            x = self.batch_norm(x)
+        x = self.layer_norm(x)
 
         x = self.fc2(x)  # Compute logits
         x = x.view(-1, 1) if x.shape[-1] == 1 else x  # Ensure logits shape is correct

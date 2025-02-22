@@ -281,7 +281,7 @@ class Trainer:
 
             # Step the scheduler (if provided)
             if self.scheduler:
-                self.scheduler.step(val_loss)  # Adjust LR based on validation loss
+                self.scheduler.step()  # Adjust LR based on validation loss
 
             # **Check for Early Stopping**
             if early_stopping.step(val_loss):
