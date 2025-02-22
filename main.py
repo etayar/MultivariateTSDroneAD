@@ -52,7 +52,7 @@ def get_criterion(model_config, label_counts):
     return criterion
 
 
-def main(model_config=None, checkpoint_path=None, best_model_path=None):
+def main(model_config):
     # Set device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -84,6 +84,8 @@ def main(model_config=None, checkpoint_path=None, best_model_path=None):
 
     lr = model_config['learning_rate']
 
+    checkpoint_path = model_config['checkpoint_epoch_path']
+    best_model_path = model_config['best_model_path']
     # Initialize model
     if checkpoint_path: # If a checkpoint is provided, due to previous training interruption, load it
         print(f"Loading model from checkpoint: {checkpoint_path}")
@@ -191,8 +193,12 @@ if __name__ == "__main__":
     # Get the current date in "YYYY-MM-DD" format
     current_date = datetime.now().strftime("%Y-%m-%d")
 
+    retrieve_last_training_session = False
+    multiple_data_sets_training_mode = True
+    training_sets = UEA_DATASETS if multiple_data_sets_training_mode else [experimental_dataset_name]
+
     multi_class = True
-    for data_set in UEA_DATASETS:
+    for data_set in training_sets:
 
         if data_set == 'Heartbeat':
             multi_class = False
@@ -224,8 +230,8 @@ if __name__ == "__main__":
 
         os.makedirs(date_dir, exist_ok=True)
 
-        checkpoint_path = os.path.join(date_dir, "checkpoint_epoch.pth")
-        best_model_path = os.path.join(date_dir, "best_model.pth")
+        checkpoint_path = os.path.join(date_dir, "checkpoint_epoch.pth") if retrieve_last_training_session else None
+        best_model_path = os.path.join(date_dir, "best_model.pth") if multiple_data_sets_training_mode else None
         training_res = os.path.join(date_dir, "training.json")
         test_res = os.path.join(date_dir, "test.json")
 
@@ -280,4 +286,4 @@ if __name__ == "__main__":
                 f"multi_class: {config['multi_class']}\n"
                 f"blocks: {config['blocks']}"
             )
-            main(config, checkpoint_path=checkpoint_path)
+            main(config)
