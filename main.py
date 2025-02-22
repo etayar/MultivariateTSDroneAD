@@ -277,19 +277,21 @@ if __name__ == "__main__":
     multilabel_path = None if not multilabel_base_path else os.path.join(multilabel_base_path, "multilabel_path")
     multiclass_path = None if not multiclass_base_path else os.path.join(multiclass_base_path, "multiclass_path")
 
-    os.makedirs(date_dir, exist_ok=True)
-
-    checkpoint_path = os.path.join(date_dir, "checkpoint_epoch.pth")
-    best_model_path = os.path.join(date_dir, "best_model.pth")
-    training_res = os.path.join(date_dir, "training.json")
-    test_res = os.path.join(date_dir, "test.json")
-
     retrieve_last_training_session = False
     multiple_data_sets_training_mode = True
     training_sets = UEA_DATASETS if multiple_data_sets_training_mode else [experimental_dataset_name]
 
     for ds_num, k_v in enumerate(training_sets.items()):
         data_set, task = k_v
+
+        full_path = os.path.join(date_dir, data_set)
+        os.makedirs(full_path, exist_ok=True)
+
+        checkpoint_path = os.path.join(full_path, "checkpoint_epoch.pth")
+        best_model_path = os.path.join(full_path, "best_model.pth")
+        training_res = os.path.join(full_path, "training.json")
+        test_res = os.path.join(full_path, "test.json")
+
         multi_class = True if task == 'multiclass' else False
 
         config = {
