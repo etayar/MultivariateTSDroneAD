@@ -100,14 +100,17 @@ class ResNetBlock2D(nn.Module):
 
 
 class ResNet2D(BaseConvFuser):
-    def __init__(self, input_shape, blocks=(2, 2, 2), hidden_dim=32, time_scaler=1):
+    def __init__(self, input_shape, blocks=(2, 2, 2), hidden_dim=32, time_scaler=1, d_model=128):
         super().__init__()
 
-        # Monitor the input tensor
-        self.S = input_shape[0]  # Number of sensors
-        self.T = input_shape[1]  # Time-series length
+        # Extract dimensions
+        self.S = input_shape[0]  # Number of sensors (height in 2D representation)
+        self.T = input_shape[1]  # Time-series length (width in 2D representation)
+        self.scaled_T = int(time_scaler * self.T)  # Desired output time steps. It is set as an attribute for sequential learning purposes.
+
         print(f"Number of sensors: {self.S}")
         print(f"Time-series length: {self.T}")
+        print(f"Scaled time steps: {self.scaled_T}")
 
         self.in_channels = hidden_dim  # Initial input channels
 
@@ -122,15 +125,15 @@ class ResNet2D(BaseConvFuser):
         in_channels = hidden_dim  # Track in_channels dynamically
 
         for i in range(len(blocks)):
-            stride = 1 if i == 0 else 2  # First layer keeps stride=1, others use stride=2
-            out_channels = int(in_channels * 1.1)  # Double the channels each time
+            stride = 1 if i == 0 else 2  # First block keeps stride=1, others use stride=2
+            out_channels = int(in_channels * 1.1)  # Gradually increase channels
             self.layers.append(self._make_layer(in_channels, out_channels, blocks[i], stride=stride))
             in_channels = out_channels  # Update in_channels after each layer
 
-        # Projection Layer: Ensures Output is `int(time_scaler * self.T)
+        # **Projection Layer**
         self.projection = nn.Sequential(
-            nn.Conv2d(in_channels, int(time_scaler * self.T), kernel_size=1),  # Reduce to int(time_scaler * self.T)-channel time-series
-            nn.AdaptiveAvgPool2d((1, 1))  # Ensures time length = int(time_scaler * self.T)
+            nn.Conv2d(in_channels, d_model, kernel_size=1),  # Map channels to d_model
+            nn.AdaptiveAvgPool2d((self.scaled_T, 1))  # Fix time steps to scaled_T
         )
 
     @staticmethod
@@ -150,10 +153,12 @@ class ResNet2D(BaseConvFuser):
         for layer in self.layers:
             x = layer(x)
 
-        # Project to 1D Time-Series of Length `int(time_scaler * self.T)
-        x = self.projection(x)  # (batch, int(time_scaler * self.T), 1, 1)
-        return x
+        # **Projection Layer**
+        x = self.projection(x)  # (batch, d_model, scaled_T, 1)
 
+        # Ensure shape is (batch, scaled_T, d_model, 1)
+        x = x.permute(0, 2, 1, 3)  # Swap to (batch, time_steps, d_model, 1)
+        return x
 
 
 class ConvFuser3(BaseConvFuser):
@@ -298,29 +303,6 @@ class LinearAggregator(nn.Module):
         x = x.permute(1, 2, 0)  # Reshape to [batch_size, d_model, T]
         x = self.projection(x).squeeze(-1)  # Shape: [batch_size, d_model]
         return x
-
-
-# class ConvAggregator(nn.Module):
-#     def __init__(self, d_model, kernel_size=3):
-#         super().__init__()
-#         self.conv = nn.Conv1d(
-#             in_channels=d_model,
-#             out_channels=d_model,
-#             kernel_size=kernel_size,
-#             stride=1,
-#             padding=kernel_size // 2
-#         )
-#         self.global_pool = nn.AdaptiveMaxPool1d(1)  # Aggregate down to 1
-#
-#     def forward(self, x):
-#         """
-#         x: [T, batch_size, d_model]
-#         Returns: [batch_size, d_model]
-#         """
-#         x = x.permute(1, 2, 0)  # Reshape to [batch_size, d_model, T]
-#         x = self.conv(x)  # Shape: [batch_size, d_model, T]
-#         x = self.global_pool(x).squeeze(-1)  # Shape: [batch_size, d_model]
-#         return x
 
 
 class ResNetBlock1D(nn.Module):
@@ -474,11 +456,6 @@ class MultivariateTSAD(nn.Module):
         # Variables Fuse
         self.conv_fuser = conv_fuser
         self.T = conv_fuser.T  # Sequence length
-        self.embedding_dim = d_model
-
-        # Embedding layer for transformer input
-        # self.embedding = nn.Linear(self.T, d_model)
-        self.embedding = nn.Linear(1, d_model)
 
         scaled_T = int(time_scaler * self.T)
 
@@ -530,11 +507,10 @@ class MultivariateTSAD(nn.Module):
             nn.init.zeros_(m.bias)
 
     def forward(self, x):
-        x = self.conv_fuser(x)  # Shape: [batch_size, T, 1, 1]
-        x = x.squeeze(-1)  # Squeeze: [batch_size, T, 1]
+        x = self.conv_fuser(x)  # Shape: [batch_size, T, d_model, 1]
+        x = x.squeeze(-1)  # Squeeze: [batch_size, T, d_model]
 
         # Map to embedding space and add positional encoding
-        x = self.embedding(x)  # Shape: [batch_size, T, d_model]
         x = self.pos_encoding(x)
 
         x = self.layer_norm1(x)
@@ -620,7 +596,7 @@ def build_model(model_config: dict):
     if fuser_name == "ConvFuser1":
         fuser = ConvFuser1(input_shape, time_scaler)
     elif fuser_name == "ConvFuser2":
-        fuser = ResNet2D(input_shape, blocks=model_config['blocks'], time_scaler=time_scaler)
+        fuser = ResNet2D(input_shape, blocks=model_config['blocks'], time_scaler=time_scaler, d_model=d_model)
     elif fuser_name == "ConvFuser3":
         fuser = ConvFuser3(input_shape)
     else:

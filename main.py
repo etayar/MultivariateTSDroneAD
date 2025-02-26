@@ -148,8 +148,8 @@ def main(model_config, by_checkpoint=False, by_best_model=True):
 
         # Replace Projection Layer
         model.conv_fuser.projection = nn.Sequential(
-            nn.Conv2d(in_channels, new_projection_out_channels, kernel_size=1),
-            nn.AdaptiveAvgPool2d((1, 1))
+            nn.Conv2d(in_channels, model_config['d_model'], kernel_size=1),
+            nn.AdaptiveAvgPool2d((new_projection_out_channels, 1))
         )
 
         # Replace Fully Connected Layer (fc2) for classification
@@ -299,18 +299,19 @@ if __name__ == "__main__":
             'previous_dataset_path': previous_dataset_path,
             'training_res': training_res,
             'test_res': test_res,
-            'multi_class': multi_class, # binary class' is determined by the number of data classes. Multilabel class' is concluded.
+            'multi_class': multi_class,
+            # binary class' is determined by the number of data classes. Multilabel class' is concluded.
             'fuser_name': 'ConvFuser2',
             'blocks': (3, 4, 6, 3),  # The ResNet skip connection blocks
             'transformer_variant': 'performer',  # Choose transformer variant
             'use_learnable_pe': True,  # Use learnable positional encoding
             'aggregator': 'conv',  # Use aggregation
             'num_epochs': 50,
-            'd_model': 512,
+            'd_model': 256,
             'nhead': 8,  # # transformer heads
-            'num_layers': 8,  # transformer layers
-            'batch_size': 16,
-            'dropout': 0.25,
+            'num_layers': 6,  # transformer layers
+            'batch_size': 32,
+            'dropout': 0.35,
             'learning_rate': 1e-4,
             'weight_decay': 1e-4,
             'time_scaler': None,  # The portion of T for conv output time-series latent representative
