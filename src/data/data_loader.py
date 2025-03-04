@@ -29,7 +29,7 @@ class UAVTimeSeriesDataset(Dataset):
         return self.data[idx], self.labels[idx]
 
 
-def load_uav_data(normal_path: str, failure_path: str):
+def normal_abnormal_data(normal_path: str, failure_path: str):
     """
     Loads UAV time-series data from two directories and assigns labels.
 
@@ -133,12 +133,12 @@ def load_data(
     multilabel_path: str = None,
     multiclass_path: str = None,
     normal_path: str = None,
-    failure_path: str = None,
+    abnormal_path: str = None,
     experimental_dataset_name: str = None
 ):
 
-    if normal_path:
-        data, label = load_uav_data(normal_path, failure_path)
+    if normal_path and abnormal_path:
+        data, label = normal_abnormal_data(normal_path, abnormal_path)
     elif multiclass_path:
         data, label = load_multiclass_data(multiclass_path)
     elif multilabel_path:
@@ -156,7 +156,6 @@ def load_and_split_time_series_data(split_rates=(0.2, 0.5), batch_size=32, rando
 
     # Load UAV time-series patches and labels
     data, labels = load_data(**kwargs)
-    # data, labels = load_uav_data(normal_path, failure_path)
 
     # Convert data into a proper NumPy array of float32
     data = np.array(data, dtype=np.float32)  # Ensure dtype consistency
