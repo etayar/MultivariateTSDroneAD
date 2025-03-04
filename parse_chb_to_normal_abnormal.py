@@ -119,3 +119,18 @@ def collect_summary_seizures(summary_pth):
                         'end_point': int(previous_lines[5].split(':')[-1].strip().split(' ')[0])
                     }
     return chb_seizures
+
+
+def save_normal_abnormal(from_dir: str, to_dir: str):
+    chb_normal, chb_abnormal = chb_to_normal_abnormal(dir_pth=from_dir)
+
+    os.makedirs(to_dir, exist_ok=True)  # Ensure the directory exists
+
+    # Save normal signals
+    np.save(os.path.join(to_dir, "chb_normal.npy"), chb_normal)
+    print(f"Saved chb_normal to {os.path.join(to_dir, 'chb_normal.npy')}")
+
+    # Save abnormal signals
+    np.save(os.path.join(to_dir, "chb_abnormal.npy"), chb_abnormal)
+    print(f"Saved chb_abnormal to {os.path.join(to_dir, 'chb_abnormal.npy')}")
+
