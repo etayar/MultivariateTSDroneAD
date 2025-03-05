@@ -2,25 +2,42 @@ import pandas as pd
 import pyedflib
 import numpy as np
 import os
+import re
 
 
 def collect_summary_seizures(summary_pth):
     chb_seizures = {}
-    previous_lines = []  # Store previous lines
-    with open(summary_pth, "r") as f:
-        for i, line in enumerate(f):
-            previous_lines.append(line.strip())  # Keep track of previous lines
-            if len(previous_lines) > 6:
-                previous_lines.pop(0)  # Keep only last 6 lines in memory
 
-            if 'Seizure End Time:' in line:
-                num_seizures = int(previous_lines[3][-1])
-                if num_seizures >= 1:
-                    seizure_file = previous_lines[0].split(':')[-1].strip().split('.')[0]
-                    chb_seizures[seizure_file] = {
-                        'start_point': int(previous_lines[4].split(':')[-1].strip().split(' ')[0]),
-                        'end_point': int(previous_lines[5].split(':')[-1].strip().split(' ')[0])
-                    }
+    with open(summary_pth, "r") as f:
+        seizure_file = None  # Ensure it's defined before use
+
+        for line in f:
+            # Extract seizure file name
+            match = re.search(r'File Name:\s*([\w\d_]+)\.edf', line)
+            if match:
+                seizure_file = match.group(1)
+
+            # Extract seizure event times
+            pattern = r"Seizure \d+ (Start|End) Time:"
+            if seizure_file and re.search(pattern, line):  # Ensure seizure_file is set
+                if seizure_file not in chb_seizures:
+                    chb_seizures[seizure_file] = {}
+
+                # Determine if it’s Start or End time point
+                boundary = 'start' if 'start' in line.lower() else 'end'
+
+                # Extract seizure number
+                match = re.search(r'Seizure\s+(\d+)', line)
+                seizure_number = match.group(1) if match else "Unknown"
+
+                boundary_key = f"{boundary}_{seizure_number}"
+
+                # Extract time point
+                time_match = re.search(r'(\d+) seconds', line)
+                time_point = int(time_match.group(1)) if time_match else None
+
+                chb_seizures[seizure_file][boundary_key] = time_point
+
     return chb_seizures
 
 
@@ -54,9 +71,12 @@ def cut_eeg_signals(signal, summary, file_name):
         print(f"Skipping {file_name}: Only {total_samples} samples (too short)")
         return None
 
+    if summary is None:
+        print("stop")
+
     if file_name in summary:
-        start_p = summary[file_name]['start_point']
-        end_p = summary[file_name]['end_point']
+        start_p = summary[file_name]['start_1']
+        end_p = summary[file_name]['end_1']
 
         start_signal = start_p
         end_signal = start_p + 64000
@@ -104,6 +124,10 @@ def chb_to_normal_abnormal(from_dir, to_dir):
             continue  # Skip non-folder files
 
         summary = None  # Reset for each folder
+        for file_name in os.listdir(chb_folder_pth):
+            file_pth = os.path.join(chb_folder_pth, file_name)
+            if file_name == f"{chb_folder}-summary.txt":
+                summary = collect_summary_seizures(file_pth)
 
         for file_name in os.listdir(chb_folder_pth):
             file_pth = os.path.join(chb_folder_pth, file_name)
@@ -111,13 +135,11 @@ def chb_to_normal_abnormal(from_dir, to_dir):
             if file_name.endswith(".seizures"):  # Ignore .seizures files
                 continue
 
-            elif file_name == f"{chb_folder}-summary.txt":
-                summary = collect_summary_seizures(file_pth)
-
             elif file_name.endswith(".edf"):  # Process EEG data
                 signals = open_edf_file(file_pth)
                 signal_name = file_name.split('.')[0]  # Remove .edf extension
-
+                if summary is None:
+                    print("stop")
                 # Cut signal to 64,000 samples
                 cut_signal = cut_eeg_signals(signals, summary, signal_name)
 
@@ -148,3 +170,18 @@ def chb_to_normal_abnormal(from_dir, to_dir):
     print("Final files saved:")
     print(f"   - {os.path.join(to_dir, 'chb_normal.npy')}")
     print(f"   - {os.path.join(to_dir, 'chb_abnormal.npy')}")
+
+
+if __name__ == '__main__':
+    path = '/Users/etayar/PycharmProjects/eec_chb'
+    to_pth = '/Users/etayar/PycharmProjects'
+    chb_to_normal_abnormal(from_dir=path, to_dir=path)
+
+    # load for inspection:
+    # Load normal EEG data
+    chb_normal = np.load(os.path.join(path, "chb_normal.npy"), allow_pickle=True).item()
+
+    # Load abnormal EEG data
+    chb_abnormal = np.load(os.path.join(path, "chb_abnormal.npy"), allow_pickle=True).item()
+
+    exit()
