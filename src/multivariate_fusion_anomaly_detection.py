@@ -643,7 +643,7 @@ if __name__ == '__main__':
         'batch_size': 16,
         'dropout': 0.1,
         'learning_rate': 1e-4,
-        'time_scaler': None,  # The portion of T for conv output time-series latent representative
+        'time_scaler': 1,  # The portion of T for conv output time-series latent representative
         'prediction_threshold': 0.5,
         'split_rates': (0.2, 0.3),
         'experimental_dataset_name': 'data_set'
