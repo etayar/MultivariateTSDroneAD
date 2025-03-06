@@ -29,7 +29,7 @@ class UAVTimeSeriesDataset(Dataset):
         return self.data[idx], self.labels[idx]
 
 
-def normal_abnormal_data(normal_path: str, failure_path: str):
+def normal_abnormal_csv_data(normal_path: str, failure_path: str):
     """
     Loads UAV time-series data from two directories and assigns labels.
 
@@ -81,21 +81,52 @@ def normal_abnormal_data(normal_path: str, failure_path: str):
     if len(shapes) > 1:
         raise ValueError(f"Data patches have inconsistent shapes: {shapes}")
 
+    # Convert data into a proper NumPy array of float32
+    data = np.array(data, dtype=np.float32)  # Ensure dtype consistency
+    labels = np.array(labels)
+
     return data, labels
 
 
-def load_multiclass_data(pth: str):
+def load_multivariate_data_with_labels(normal_path: str, fault_path: str):
+    """
+    Loads a dictionary from a npy file, extracts multivariate time series data,
+    and assigns labels based on key names. Key - sample name, Value - S x T MTS.
 
-    return 'X', 'y'
+    Returns:
+        np.ndarray: Array of shape (num_samples, S, T).
+        np.ndarray: Corresponding labels (0 for normal, 1 for abnormal).
+    """
 
+    def load_from_directory(directory, label):
+        data, labels = [], []
+        for file in sorted(os.listdir(directory)):  # Ensure consistent ordering
+            if file.endswith('.npy'):
+                file_path = os.path.join(directory, file)
 
-def load_multilabel_data(pth: str):
+                # Load dictionary from npy file
+                data_dict = np.load(file_path, allow_pickle=True).item()
 
-    return 'X', 'y'
+                for key, value in data_dict.items():
+                    assert isinstance(value, np.ndarray), f"Value for key '{key}' is not a numpy array."
+                    data.append(value)
+                    labels.append(label)  # Assign the label based on directory
+
+        return data, labels
+
+    # Load normal (label=0) and fault (label=1) data
+    normal_data, normal_labels = load_from_directory(normal_path, label=0)
+    fault_data, fault_labels = load_from_directory(fault_path, label=1)
+
+    # Convert to NumPy arrays
+    all_data = np.array(normal_data + fault_data)
+    all_labels = np.array(normal_labels + fault_labels)
+
+    return all_data, all_labels
 
 
 def load_uea_multivariate_ts(dataset_name):
-
+    #TODO: adapt to normal and abnormal paths
     # Load CSV file
     if "COLAB_GPU" in os.environ:
 
@@ -129,22 +160,23 @@ def load_uea_multivariate_ts(dataset_name):
     return X, y
 
 
-def load_data(
-    multilabel_path: str = None,
-    multiclass_path: str = None,
-    normal_path: str = None,
-    abnormal_path: str = None,
-    experimental_dataset_name: str = None
-):
+def normal_abnormal_xxx_data(normal_path: str, fault_path: str):
 
-    if normal_path and abnormal_path:
-        data, label = normal_abnormal_data(normal_path, abnormal_path)
-    elif multiclass_path:
-        data, label = load_multiclass_data(multiclass_path)
-    elif multilabel_path:
-        data, label = load_multilabel_data(multilabel_path)
+    return np.array([]), np.array([])
+
+
+def load_data(
+    normal_path: str,
+    abnormal_path: str,
+    csv_data: bool = True,
+    npy_data: bool = False
+):
+    if csv_data:
+        data, label = normal_abnormal_csv_data(normal_path, abnormal_path)
+    elif npy_data:
+        data, label = load_multivariate_data_with_labels(normal_path, abnormal_path)
     else:
-        data, label = load_uea_multivariate_ts(experimental_dataset_name)
+        data, label = normal_abnormal_xxx_data(normal_path, abnormal_path)
     return data, label
 
 
@@ -156,10 +188,6 @@ def load_and_split_time_series_data(split_rates=(0.2, 0.5), batch_size=32, rando
 
     # Load UAV time-series patches and labels
     data, labels = load_data(**kwargs)
-
-    # Convert data into a proper NumPy array of float32
-    data = np.array(data, dtype=np.float32)  # Ensure dtype consistency
-    labels = np.array(labels)
 
     # Count occurrences of each class **before splitting** for proper weighting
     label_counts = Counter(labels)  # Returns a dictionary {class_0: count, class_1: count, ...}

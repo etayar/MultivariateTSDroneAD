@@ -61,10 +61,9 @@ def main(model_config, by_checkpoint=False, by_best_model=True):
     # Load data
     kwargs = {
         'normal_path': model_config.get('normal_path'),
-        'failure_path': model_config.get('fault_path'),
-        'multilabel_path': model_config.get('multilabel_path'),
-        'multiclass_path': model_config.get('multiclass_path'),
-        'experimental_dataset_name': model_config.get('experimental_dataset_name')
+        'abnormal_path': model_config.get('abnormal_path'),
+        'csv_data': model_config.get('csv_data'),
+        'npy_data': model_config.get('npy_data')
     }
     train_loader, val_loader, test_loader, label_counts = load_and_split_time_series_data(
         split_rates=model_config['split_rates'],
@@ -228,9 +227,27 @@ def main(model_config, by_checkpoint=False, by_best_model=True):
     save_metrics(test_metrics, metrics_file_path=model_config['test_res'])
 
 
+def get_normal_abnormal_paths(directory: str):
+    paths = {}
+
+    for category in ["normal", "abnormal"]:
+        category_path = os.path.join(directory, category)
+
+        if not os.path.exists(category_path):
+            raise FileNotFoundError(f"Missing required folder: {category_path}")
+
+        if not os.path.isdir(category_path):
+            raise NotADirectoryError(f"Expected a folder, but found a file: {category_path}")
+
+        paths[category] = category_path
+
+    return paths
+
+
 if __name__ == "__main__":
-    ################### UEA DATASETS ###################
+    ################### DATASETS ###################
     UEA_DATASETS = {
+        #TODO: Those datasets need to be adapted to the new convention - normal_path and abnormal_path
         'Heartbeat': 'binary',
         'Handwriting': 'multiclass',
         'PhonemeSpectra': 'multiclass',
@@ -238,9 +255,16 @@ if __name__ == "__main__":
         'EthanolConcentration': 'multiclass',
         'FaceDetection': 'multiclass'
     }
-    experimental_dataset_name = 'Handwriting'
-    # experimental_dataset_name = 'Heartbeat'
-    ################### UEA DATASETS ###################
+
+    EEG_DATASETS = {
+        'CHBMIT2': 'binary'
+    }
+    csv_data = False
+    npy_data = True
+    ################### DATASETS ###################
+    retrieve_last_training_session = False
+    multiple_data_sets_training_mode = True
+    training_sets = EEG_DATASETS
 
     # Get the current date in "YYYY-MM-DD" format
     current_date = datetime.now().strftime("%Y-%m-%d")
@@ -248,9 +272,7 @@ if __name__ == "__main__":
     # Detect if running in Google Colab
     if "COLAB_GPU" in os.environ:
         print("Running in Google Colab - Updating paths!")
-        base_path = "/content/drive/My Drive/My_PHD/My_First_Paper/MultivariateTSDroneAD"
-        multilabel_base_path = ""
-        multiclass_base_path = ""
+        base_path = "/content/drive/My Drive/My_PHD/My_First_Paper"
 
         # Create the directory for today's date if it doesn't exist
         date_dir = os.path.join(
@@ -258,27 +280,23 @@ if __name__ == "__main__":
     else:
         print("Running locally - Using Mac paths.")
         base_path = "/Users/etayar/PycharmProjects/MultivariateTSDroneAD"
-        multilabel_base_path = ""
-        multiclass_base_path = ""
 
         # Create the directory for today's date if it doesn't exist
         date_dir = os.path.join("src/data/models_metrics", current_date)
-
-    folder = ""
-    normal_path = None  # os.path.join(base_path, folder, "normal_data")
-    fault_path = None  # os.path.join(base_path, folder, "anomalous_data")
-
-    multilabel_path = None if not multilabel_base_path else os.path.join(multilabel_base_path, "multilabel_path")
-    multiclass_path = None if not multiclass_base_path else os.path.join(multiclass_base_path, "multiclass_path")
-
-    retrieve_last_training_session = False
-    multiple_data_sets_training_mode = True
-    training_sets = UEA_DATASETS if multiple_data_sets_training_mode else [experimental_dataset_name]
 
     previous_dataset_path = ''
     for ds_num, k_v in enumerate(training_sets.items()):
         data_set, task = k_v
 
+        directory = os.path.join(base_path, data_set)
+        paths = get_normal_abnormal_paths(directory)
+
+        normal_path = paths["normal"]
+        abnormal_path = paths["abnormal"]
+
+        multi_class = True if task == 'multiclass' else False
+
+        ################## DESTINATION PATHS ###################
         full_path = os.path.join(date_dir, data_set)
         os.makedirs(full_path, exist_ok=True)
 
@@ -286,17 +304,16 @@ if __name__ == "__main__":
         best_model_path = os.path.join(full_path, "best_model.pth")
         training_res = os.path.join(full_path, "training.json")
         test_res = os.path.join(full_path, "test.json")
-
-        multi_class = True if task == 'multiclass' else False
+        ########################################################
 
         config = {
-            'normal_path': normal_path,
-            'fault_path': fault_path,
-            'multilabel_path': multilabel_path,
-            'multiclass_path': multiclass_path,
-            'checkpoint_epoch_path': checkpoint_path,
-            'best_model_path': best_model_path,
-            'previous_dataset_path': previous_dataset_path,
+            'csv_data': csv_data,
+            'npy_data': npy_data,
+            'normal_path': normal_path,  # path to data source
+            'abnormal_path': abnormal_path,  # path to data source
+            'checkpoint_epoch_path': checkpoint_path,  # path to data destination
+            'best_model_path': best_model_path,  # path to data destination
+            'previous_dataset_path': previous_dataset_path,  # path to data source
             'training_res': training_res,
             'test_res': test_res,
             'multi_class': multi_class,
@@ -316,8 +333,7 @@ if __name__ == "__main__":
             'weight_decay': 1e-4,
             'time_scaler': None,  # The portion of T for conv output time-series latent representative
             'prediction_threshold': 0.5,
-            'split_rates': (0.2, 0.3),
-            'experimental_dataset_name': data_set
+            'split_rates': (0.2, 0.3)
         }
 
         print(
@@ -334,13 +350,6 @@ if __name__ == "__main__":
 
         by_best_model = True if multiple_data_sets_training_mode and ds_num > 0 else None
         by_checkpoint = True if retrieve_last_training_session else None
-
-        # load_model = input("Load existing model (strictly yes or no answer)?").lower().strip()
-        # while load_model not in ['yes', 'no']:
-        #     load_model = input("Load existing model (strictly yes or no answer)?").lower().strip()
-        # if load_model == 'no':
-        #     print("Start training new model.")
-        #     by_checkpoint = None
 
         main(config, by_checkpoint=by_checkpoint, by_best_model=by_best_model)
         previous_dataset_path = best_model_path

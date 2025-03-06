@@ -3,6 +3,7 @@ import pyedflib
 import numpy as np
 import os
 import re
+from multiprocessing import Pool
 
 
 def collect_summary_seizures(summary_pth):
@@ -41,20 +42,6 @@ def collect_summary_seizures(summary_pth):
     return chb_seizures
 
 
-def open_dot_seizures(f_pth):
-    try:
-        df = pd.read_csv(f_pth, sep="\t", encoding="latin-1")  # Try tab-separated first
-        print(df.head())
-        return df
-    except Exception:
-        try:
-            df = pd.read_csv(f_pth, encoding="latin-1")  # Try CSV
-            print(df.head())
-            return df
-        except Exception as e:
-            print(f"Could not read as CSV/TSV: {e}")
-
-
 def open_edf_file(f_pth):
     with pyedflib.EdfReader(f_pth) as f:
         n_channels = f.signals_in_file
@@ -70,9 +57,6 @@ def cut_eeg_signals(signal, summary, file_name):
     if total_samples < 64000:  # Ignore short signals
         print(f"Skipping {file_name}: Only {total_samples} samples (too short)")
         return None
-
-    if summary is None:
-        print("stop")
 
     if file_name in summary:
         start_p = summary[file_name]['start_1']
@@ -99,21 +83,36 @@ def cut_eeg_signals(signal, summary, file_name):
         return signal[:, :64000]  # Take first 64,000 samples for normal signals
 
 
-def append_to_disk(file_path, new_data):
-    """ Append new data to an existing .npy file without keeping everything in RAM. """
-    if os.path.exists(file_path):
-        existing_data = np.load(file_path, allow_pickle=True).item()
-        existing_data.update(new_data)  # Merge new data
-        np.save(file_path, existing_data)  # Save back to disk
-    else:
-        np.save(file_path, new_data)
+def save_signal_to_folder(folder, file_name, signal):
+    """ Saves the EEG signal as a separate .npy file in the given folder. """
+    os.makedirs(folder, exist_ok=True)  # Ensure folder exists
+    np.save(os.path.join(folder, f"{file_name}.npy"), signal)
+
+
+def process_file(args):
+    """ Helper function to process a single EEG file in parallel. """
+    file_pth, summary, normal_folder, abnormal_folder = args
+    file_name = os.path.basename(file_pth)
+    signal_name = file_name.split('.')[0]  # Remove .edf extension
+
+    signals = open_edf_file(file_pth)
+    cut_signal = cut_eeg_signals(signals, summary, signal_name)
+
+    if cut_signal is None:
+        return  # Skip invalid files
+
+    folder = abnormal_folder if summary and signal_name in summary else normal_folder
+    save_signal_to_folder(folder, signal_name, cut_signal)
 
 
 def chb_to_normal_abnormal(from_dir, to_dir):
-    os.makedirs(to_dir, exist_ok=True)
+    normal_folder = os.path.join(to_dir, "normal")
+    abnormal_folder = os.path.join(to_dir, "abnormal")
 
-    temp_normal_path = os.path.join(to_dir, "temp_chb_normal.npy")
-    temp_abnormal_path = os.path.join(to_dir, "temp_chb_abnormal.npy")
+    os.makedirs(normal_folder, exist_ok=True)
+    os.makedirs(abnormal_folder, exist_ok=True)
+
+    file_list = []
 
     for chb_folder in os.listdir(from_dir):
         if not chb_folder.startswith("chb"):  # Skip non-CHB folders
@@ -125,51 +124,21 @@ def chb_to_normal_abnormal(from_dir, to_dir):
 
         summary = None  # Reset for each folder
         for file_name in os.listdir(chb_folder_pth):
-            file_pth = os.path.join(chb_folder_pth, file_name)
             if file_name == f"{chb_folder}-summary.txt":
-                summary = collect_summary_seizures(file_pth)
+                summary = collect_summary_seizures(os.path.join(chb_folder_pth, file_name))
 
         for file_name in os.listdir(chb_folder_pth):
             file_pth = os.path.join(chb_folder_pth, file_name)
+            if file_name.endswith(".edf"):  # Process EEG data
+                file_list.append((file_pth, summary, normal_folder, abnormal_folder))
 
-            if file_name.endswith(".seizures"):  # Ignore .seizures files
-                continue
+    # Use multiprocessing to process files in parallel
+    with Pool() as pool:
+        pool.map(process_file, file_list)
 
-            elif file_name.endswith(".edf"):  # Process EEG data
-                signals = open_edf_file(file_pth)
-                signal_name = file_name.split('.')[0]  # Remove .edf extension
-                if summary is None:
-                    print("stop")
-                # Cut signal to 64,000 samples
-                cut_signal = cut_eeg_signals(signals, summary, signal_name)
-
-                if cut_signal is None:
-                    continue  # Skip short/invalid signals
-
-                temp_dict = {signal_name: cut_signal}
-
-                if summary and signal_name in summary:  # Abnormal case
-                    append_to_disk(temp_abnormal_path, temp_dict)
-                else:  # Normal case
-                    append_to_disk(temp_normal_path, temp_dict)
-
-    # Load temp files & merge into final npy files
-    chb_normal = np.load(temp_normal_path, allow_pickle=True).item() if os.path.exists(temp_normal_path) else {}
-    chb_abnormal = np.load(temp_abnormal_path, allow_pickle=True).item() if os.path.exists(temp_abnormal_path) else {}
-
-    # Save final files
-    np.save(os.path.join(to_dir, "chb_normal.npy"), chb_normal)
-    np.save(os.path.join(to_dir, "chb_abnormal.npy"), chb_abnormal)
-
-    # Delete temporary files
-    if os.path.exists(temp_normal_path):
-        os.remove(temp_normal_path)
-    if os.path.exists(temp_abnormal_path):
-        os.remove(temp_abnormal_path)
-
-    print("Final files saved:")
-    print(f"   - {os.path.join(to_dir, 'chb_normal.npy')}")
-    print(f"   - {os.path.join(to_dir, 'chb_abnormal.npy')}")
+    print("EEG data saved:")
+    print(f"   - Normal signals → {normal_folder}")
+    print(f"   - Abnormal signals → {abnormal_folder}")
 
 
 if __name__ == '__main__':
@@ -179,9 +148,9 @@ if __name__ == '__main__':
 
     # load for inspection:
     # Load normal EEG data
-    chb_normal = np.load(os.path.join(path, "chb_normal.npy"), allow_pickle=True).item()
+    chb_normal = np.load(os.path.join(path, "normal.npy"), allow_pickle=True).item()
 
     # Load abnormal EEG data
-    chb_abnormal = np.load(os.path.join(path, "chb_abnormal.npy"), allow_pickle=True).item()
+    chb_abnormal = np.load(os.path.join(path, "abnormal.npy"), allow_pickle=True).item()
 
     exit()
