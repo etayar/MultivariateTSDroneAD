@@ -97,6 +97,12 @@ def process_file(args):
     signal_name = file_name.split('.')[0]  # Remove .edf extension
 
     signals = open_edf_file(file_pth)
+
+    #Filter: Skip samples that don't have exactly 23 channels
+    if signals.shape[0] != 23:
+        print(f"Skipping {signal_name}: {signals.shape[0]} channels (not 23)")
+        return
+
     cut_signal = cut_eeg_signals(signals, summary, signal_name)
 
     if cut_signal is None:

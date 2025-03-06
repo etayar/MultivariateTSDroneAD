@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import pandas as pd
+import glob
 import torch
 from torch.utils.data import Dataset, DataLoader
 from sklearn.model_selection import train_test_split
@@ -88,7 +89,7 @@ def normal_abnormal_csv_data(normal_path: str, failure_path: str):
     return data, labels
 
 
-def load_multivariate_data_with_labels(normal_path: str, fault_path: str):
+def normal_abnormal_npy_data(normal_path: str, fault_path: str):
     """
     Loads a dictionary from a npy file, extracts multivariate time series data,
     and assigns labels based on key names. Key - sample name, Value - S x T MTS.
@@ -100,25 +101,25 @@ def load_multivariate_data_with_labels(normal_path: str, fault_path: str):
 
     def load_from_directory(directory, label):
         data, labels = [], []
-        for file in sorted(os.listdir(directory)):  # Ensure consistent ordering
-            if file.endswith('.npy'):
-                file_path = os.path.join(directory, file)
 
-                # Load dictionary from npy file
-                data_dict = np.load(file_path, allow_pickle=True).item()
+        # Get all .npy files in sorted order for consistency (debugging)
+        file_paths = sorted(glob.glob(os.path.join(directory, "*.npy")))
 
-                for key, value in data_dict.items():
-                    assert isinstance(value, np.ndarray), f"Value for key '{key}' is not a numpy array."
-                    data.append(value)
-                    labels.append(label)  # Assign the label based on directory
+        for file_path in file_paths:
+            eeg_signal = np.load(file_path)  # Load EEG signal (S x T array)
+
+            assert isinstance(eeg_signal, np.ndarray), f"File {file_path} does not contain a numpy array."
+
+            data.append(eeg_signal)
+            labels.append(label)
 
         return data, labels
 
-    # Load normal (label=0) and fault (label=1) data
+    # Load normal (label=0) and abnormal (label=1) data
     normal_data, normal_labels = load_from_directory(normal_path, label=0)
     fault_data, fault_labels = load_from_directory(fault_path, label=1)
 
-    # Convert to NumPy arrays
+    # Convert to NumPy arrays only if data is not empty
     all_data = np.array(normal_data + fault_data)
     all_labels = np.array(normal_labels + fault_labels)
 
@@ -174,7 +175,7 @@ def load_data(
     if csv_data:
         data, label = normal_abnormal_csv_data(normal_path, abnormal_path)
     elif npy_data:
-        data, label = load_multivariate_data_with_labels(normal_path, abnormal_path)
+        data, label = normal_abnormal_npy_data(normal_path, abnormal_path)
     else:
         data, label = normal_abnormal_xxx_data(normal_path, abnormal_path)
     return data, label
