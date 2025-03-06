@@ -4,13 +4,14 @@ import numpy as np
 import os
 import re
 from multiprocessing import Pool
+import glob
 
 
 def collect_summary_seizures(summary_pth):
     chb_seizures = {}
 
     with open(summary_pth, "r") as f:
-        seizure_file = None  # Ensure it's defined before use
+        seizure_file = None
 
         for line in f:
             # Extract seizure file name
@@ -137,20 +138,26 @@ def chb_to_normal_abnormal(from_dir, to_dir):
         pool.map(process_file, file_list)
 
     print("EEG data saved:")
-    print(f"   - Normal signals → {normal_folder}")
-    print(f"   - Abnormal signals → {abnormal_folder}")
+    print(f"   - Normal signals -> {normal_folder}")
+    print(f"   - Abnormal signals -> {abnormal_folder}")
 
 
 if __name__ == '__main__':
     path = '/Users/etayar/PycharmProjects/eec_chb'
     to_pth = '/Users/etayar/PycharmProjects'
-    chb_to_normal_abnormal(from_dir=path, to_dir=path)
 
-    # load for inspection:
-    # Load normal EEG data
-    chb_normal = np.load(os.path.join(path, "normal.npy"), allow_pickle=True).item()
+    chb_to_normal_abnormal(from_dir=path, to_dir=to_pth)
 
-    # Load abnormal EEG data
-    chb_abnormal = np.load(os.path.join(path, "abnormal.npy"), allow_pickle=True).item()
+    # Load individual EEG files from normal/ and abnormal/ folders
+    normal_files = glob.glob(os.path.join(to_pth, "normal", "*.npy"))
+    abnormal_files = glob.glob(os.path.join(to_pth, "abnormal", "*.npy"))
+
+    if normal_files:
+        sample_normal = np.load(normal_files[0])
+        print(f"Loaded Normal Sample {normal_files[0]} with shape {sample_normal.shape}")
+
+    if abnormal_files:
+        sample_abnormal = np.load(abnormal_files[0])
+        print(f"Loaded Abnormal Sample {abnormal_files[0]} with shape {sample_abnormal.shape}")
 
     exit()
