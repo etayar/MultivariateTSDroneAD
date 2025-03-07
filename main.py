@@ -340,7 +340,7 @@ if __name__ == "__main__":
             'weight_decay': 1e-4,
             'time_scaler': 1,  # The portion of T for conv output time-series latent representative
             'prediction_threshold': 0.5,
-            'split_rates': (0.3, 0.3)
+            'split_rates': (0.3, 0.5)
         }
 
         print(
