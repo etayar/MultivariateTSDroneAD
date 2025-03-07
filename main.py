@@ -65,6 +65,8 @@ def main(model_config, by_checkpoint=False, by_best_model=True):
         'csv_data': model_config.get('csv_data'),
         'npy_data': model_config.get('npy_data')
     }
+
+    print("Loading data and splitting....")
     train_loader, val_loader, test_loader, label_counts = load_and_split_time_series_data(
         split_rates=model_config['split_rates'],
         batch_size=model_config['batch_size'],
@@ -93,7 +95,7 @@ def main(model_config, by_checkpoint=False, by_best_model=True):
     weight_decay = model_config['weight_decay']
     num_epochs = model_config['num_epochs']
 
-    # Initialize model
+    print('Initialize model...')
     if by_checkpoint:
         # If training was interrupted, resume from checkpoint. It can't deal with multiple datasets training.
         checkpoint_path = model_config['checkpoint_epoch_path']
@@ -190,7 +192,7 @@ def main(model_config, by_checkpoint=False, by_best_model=True):
 
         start_epoch = 0  # Start from the first epoch
 
-    # Initialize Trainer
+    print('Initialize Trainer...')
     trainer = Trainer(
         model,
         optimizer,
@@ -203,7 +205,6 @@ def main(model_config, by_checkpoint=False, by_best_model=True):
         prediction_threshold=model_config['prediction_threshold']
     )
 
-    # Train the model (start from the saved epoch if resuming)
     trainer.train(
         train_loader,
         val_loader,
