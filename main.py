@@ -6,7 +6,7 @@ from src.training.train import Trainer
 from src.multivariate_fusion_anomaly_detection import build_model
 import torch
 from torch import nn
-from torch.optim.lr_scheduler import CosineAnnealingLR
+from torch.optim.lr_scheduler import SequentialLR, LinearLR, CosineAnnealingLR
 
 
 def save_metrics(metrics_history, metrics_file_path):
@@ -121,8 +121,15 @@ def main(model_config, by_checkpoint=False, by_best_model=True):
         optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
         optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
 
-        # Reinitialize scheduler and load its state
-        scheduler = CosineAnnealingLR(optimizer, T_max=num_epochs, eta_min=1e-6)
+        warmup_epochs = 3
+        scheduler = SequentialLR(
+            optimizer,
+            schedulers=[
+                LinearLR(optimizer, start_factor=0.1, total_iters=warmup_epochs),  # Gradual LR increase
+                CosineAnnealingLR(optimizer, T_max=num_epochs - warmup_epochs, eta_min=1e-6)
+            ],
+            milestones=[warmup_epochs]
+        )
         scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
 
         # Resume training from the last saved epoch
@@ -177,8 +184,15 @@ def main(model_config, by_checkpoint=False, by_best_model=True):
 
         # Reinitialize the optimizer
         optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
-        # Reinitialize the scheduler (with cosine annealing)
-        scheduler = CosineAnnealingLR(optimizer, T_max=num_epochs, eta_min=1e-6)
+        warmup_epochs = 3
+        scheduler = SequentialLR(
+            optimizer,
+            schedulers=[
+                LinearLR(optimizer, start_factor=0.1, total_iters=warmup_epochs),  # Gradual LR increase
+                CosineAnnealingLR(optimizer, T_max=num_epochs - warmup_epochs, eta_min=1e-6)
+            ],
+            milestones=[warmup_epochs]
+        )
 
         # Reset start epoch
         start_epoch = 0
@@ -188,7 +202,16 @@ def main(model_config, by_checkpoint=False, by_best_model=True):
         model.to(device)
 
         optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
-        scheduler = CosineAnnealingLR(optimizer, T_max=num_epochs, eta_min=1e-6)
+
+        warmup_epochs = 3  # First 3 epochs with warmup
+        scheduler = SequentialLR(
+            optimizer,
+            schedulers=[
+                LinearLR(optimizer, start_factor=0.1, total_iters=warmup_epochs),  # Gradual LR increase
+                CosineAnnealingLR(optimizer, T_max=num_epochs - warmup_epochs, eta_min=1e-6)
+            ],
+            milestones=[warmup_epochs]
+        )
 
         start_epoch = 0  # Start from the first epoch
 
@@ -326,18 +349,18 @@ if __name__ == "__main__":
             'multi_class': multi_class,
             # binary class' is determined by the number of data classes. Multilabel class' is concluded.
             'fuser_name': 'ConvFuser2',
-            'blocks': (3, 4, 6, 3),  # The ResNet skip connection blocks
+            'blocks': (3, 4, 5, 3),  # The ResNet skip connection blocks
             'transformer_variant': 'performer',  # Choose transformer variant
             'use_learnable_pe': True,  # Use learnable positional encoding
             'aggregator': 'conv',  # Use aggregation
             'num_epochs': 50,
-            'd_model': 512,
+            'd_model': 256,
             'nhead': 8,  # # transformer heads
-            'num_layers': 6,  # transformer layers
+            'num_layers': 4,  # transformer layers
             'batch_size': 16,
-            'dropout': 0.35,
-            'learning_rate': 1e-4,
-            'weight_decay': 1e-4,
+            'dropout': 0.25,
+            'learning_rate': 5e-5,
+            'weight_decay': 5e-4,
             'time_scaler': 1,  # The portion of T for conv output time-series latent representative
             'prediction_threshold': 0.5,
             'split_rates': (0.3, 0.5)
