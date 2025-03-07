@@ -357,7 +357,7 @@ if __name__ == "__main__":
             'd_model': 256,
             'nhead': 8,  # # transformer heads
             'num_layers': 4,  # transformer layers
-            'batch_size': 16,
+            'batch_size': 8,
             'dropout': 0.25,
             'learning_rate': 5e-5,
             'weight_decay': 5e-4,
