@@ -58,7 +58,7 @@ def metrics_visualisation(root_pth: str, specific_date: str = None):
 
 if __name__ == '__main__':
     if "COLAB_GPU" in os.environ:
-        root_path = "/content/drive/My Drive/My_PHD/My_First_Paper/MultivariateTSDroneAD/src/data/models_metrics"
+        root_path = "/content/drive/My Drive/My_PHD/My_First_Paper/models_metrics"
     else:
         root_path = "/Users/etayar/PycharmProjects/MultivariateTSDroneAD/src/data/models_metrics"
 
