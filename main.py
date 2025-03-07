@@ -331,7 +331,7 @@ if __name__ == "__main__":
             'use_learnable_pe': True,  # Use learnable positional encoding
             'aggregator': 'conv',  # Use aggregation
             'num_epochs': 50,
-            'd_model': 256,
+            'd_model': 512,
             'nhead': 8,  # # transformer heads
             'num_layers': 6,  # transformer layers
             'batch_size': 16,
@@ -340,7 +340,7 @@ if __name__ == "__main__":
             'weight_decay': 1e-4,
             'time_scaler': 1,  # The portion of T for conv output time-series latent representative
             'prediction_threshold': 0.5,
-            'split_rates': (0.2, 0.3)
+            'split_rates': (0.3, 0.3)
         }
 
         print(

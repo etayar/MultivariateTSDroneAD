@@ -620,33 +620,34 @@ def build_model(model_config: dict):
 
 
 if __name__ == '__main__':
-
     config = {
-        'normal_path': 'normal_path',
-        'fault_path': 'fault_path',
-        'multilabel_path': 'multilabel_path',
-        'multiclass_path': 'multiclass_path',
-        'checkpoint_epoch_path': 'checkpoint_path',
-        'best_model_path': 'best_model_path',
+        'csv_data': 'csv_data',
+        'npy_data': 'npy_data',
+        'normal_path': 'normal_path',  # path to data source
+        'abnormal_path': 'abnormal_path',  # path to data source
+        'checkpoint_epoch_path': 'checkpoint_path',  # path to data destination
+        'best_model_path': 'best_model_path',  # path to data destination
+        'previous_dataset_path': 'previous_dataset_path',  # path to data source
         'training_res': 'training_res',
         'test_res': 'test_res',
-        'multi_class': True, # binary class' is determined by the number of data classes. Multilabel class' is concluded.
+        'multi_class': 'multi_class',
+        # binary class' is determined by the number of data classes. Multilabel class' is concluded.
         'fuser_name': 'ConvFuser2',
         'blocks': (3, 4, 6, 3),  # The ResNet skip connection blocks
-        'transformer_variant': 'vanilla',  # Choose transformer variant
+        'transformer_variant': 'performer',  # Choose transformer variant
         'use_learnable_pe': True,  # Use learnable positional encoding
         'aggregator': 'conv',  # Use aggregation
         'num_epochs': 50,
         'd_model': 512,
         'nhead': 8,  # # transformer heads
-        'num_layers': 10,  # transformer layers
+        'num_layers': 6,  # transformer layers
         'batch_size': 16,
-        'dropout': 0.1,
+        'dropout': 0.35,
         'learning_rate': 1e-4,
+        'weight_decay': 1e-4,
         'time_scaler': 1,  # The portion of T for conv output time-series latent representative
         'prediction_threshold': 0.5,
-        'split_rates': (0.2, 0.3),
-        'experimental_dataset_name': 'data_set'
+        'split_rates': (0.2, 0.3)
     }
 
     # Define input dimensions. config['input_shape'] is calculated based on concreate data set inside
