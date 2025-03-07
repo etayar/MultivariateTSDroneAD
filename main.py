@@ -256,9 +256,15 @@ if __name__ == "__main__":
         'FaceDetection': 'multiclass'
     }
 
-    EEG_DATASETS = {
-        'CHBMIT2': 'binary'
-    }
+    if "COLAB_GPU" in os.environ:
+        EEG_DATASETS = {
+            'CHBMIT': 'binary'
+        }
+    else:
+
+        EEG_DATASETS = {
+            'CHBMIT2': 'binary'
+        }
     csv_data = False
     npy_data = True
     ################### DATASETS ###################
@@ -324,10 +330,10 @@ if __name__ == "__main__":
             'use_learnable_pe': True,  # Use learnable positional encoding
             'aggregator': 'conv',  # Use aggregation
             'num_epochs': 50,
-            'd_model': 512,
+            'd_model': 256,
             'nhead': 8,  # # transformer heads
             'num_layers': 6,  # transformer layers
-            'batch_size': 32,
+            'batch_size': 16,
             'dropout': 0.35,
             'learning_rate': 1e-4,
             'weight_decay': 1e-4,
