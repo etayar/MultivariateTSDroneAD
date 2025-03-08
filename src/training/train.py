@@ -290,7 +290,7 @@ class Trainer:
                     epoch + 1,
                     config,
                     val_loss,
-                    path=config['best_model_path'],
+                    path=config['checkpoint_epoch_path'],
                     early_stopping_triggered=True
                 )
                 break  # STOP TRAINING
