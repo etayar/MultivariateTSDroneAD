@@ -328,12 +328,10 @@ if __name__ == "__main__":
         multi_class = True if task == 'multiclass' else False
 
         ################## DESTINATION PATHS ###################
-        def get_experiment_path(base_path, data_set):
+        def get_experiment_path(date_dir, data_set):
             """Automatically determine the next available experiment number."""
 
             # Get today's date folder
-            today = datetime.today().strftime('%Y-%m-%d')
-            date_dir = os.path.join(base_path, today)
             os.makedirs(date_dir, exist_ok=True)  # Ensure the date folder exists
 
             # Find the next available experiment number
@@ -349,7 +347,7 @@ if __name__ == "__main__":
 
         full_path = get_experiment_path(date_dir, data_set)
         # full_path = os.path.join(date_dir, data_set + f'_{experiment_num}')
-        os.makedirs(full_path, exist_ok=True)
+        # os.makedirs(full_path, exist_ok=True)
 
         checkpoint_path = os.path.join(full_path, "checkpoint_epoch.pth")
         best_model_path = os.path.join(full_path, "best_model.pth")
