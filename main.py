@@ -292,7 +292,6 @@ if __name__ == "__main__":
     csv_data = False
     npy_data = True
     ################### DATASETS ###################
-    experiment_num = 1  # In case we want to train different configuration at the same day.
     retrieve_last_training_session = False
     multiple_data_sets_training_mode = True
     training_sets = EEG_DATASETS
