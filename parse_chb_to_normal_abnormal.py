@@ -6,22 +6,31 @@ import re
 from multiprocessing import Pool
 import glob
 
+
 def collect_summary_seizures(summary_pth):
     chb_seizures = {}
-    with open(summary_pth, "r") as f:
+    with open(summary_pth, "r", encoding="utf-8") as f:
         seizure_file = None
         for line in f:
+            line = line.strip()
+
+            # Extract file name
             match = re.search(r'File Name:\s*([\w\d_]+)\.edf', line)
             if match:
                 seizure_file = match.group(1)
-            match = re.search(r'Seizure\s+(\d+)\s+(Start|End) Time:\s+(\d+)\s+seconds', line)
+
+            # Extract seizure details (Fix applied)
+            match = re.search(r'Seizure\s+(\d+)?\s*(Start|End) Time:\s+(\d+)\s+seconds', line)
             if match and seizure_file:
-                seizure_number = match.group(1)
+                seizure_number = match.group(1) if match.group(1) else "1"  # Default to "1" if missing
                 boundary = match.group(2).lower()
                 time_point = int(match.group(3))
+
                 if seizure_file not in chb_seizures:
                     chb_seizures[seizure_file] = {}
+
                 chb_seizures[seizure_file][f"{boundary}_{seizure_number}"] = time_point
+
     return chb_seizures
 
 
@@ -79,11 +88,11 @@ def process_file(args):
     file_name = os.path.basename(file_pth).split('.')[0]
     signals = open_edf_file(file_pth)
 
-    if signals.shape[0] > 23:
-        signals = signals[:23, :]
-    elif signals.shape[0] < 23:
-        print(f"Skipping {file_name}: {signals.shape[0]} channels (less than 23)")
-        return
+    # if signals.shape[0] > 23:
+    #     signals = signals[:23, :]
+    # elif signals.shape[0] < 23:
+    #     print(f"Skipping {file_name}: {signals.shape[0]} channels (less than 23)")
+    #     return
 
     cut_segments = cut_eeg_signals(signals, summary_for_file, file_name)
     if cut_segments is None:
