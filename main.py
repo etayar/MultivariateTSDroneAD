@@ -346,8 +346,6 @@ if __name__ == "__main__":
             return full_path
 
         full_path = get_experiment_path(date_dir, data_set)
-        # full_path = os.path.join(date_dir, data_set + f'_{experiment_num}')
-        # os.makedirs(full_path, exist_ok=True)
 
         checkpoint_path = os.path.join(full_path, "checkpoint_epoch.pth")
         best_model_path = os.path.join(full_path, "best_model.pth")
