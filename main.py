@@ -287,11 +287,12 @@ if __name__ == "__main__":
     else:
 
         EEG_DATASETS = {
-            'CHBMIT2': 'binary'
+            'CHBMIT2_1': 'binary'
         }
     csv_data = False
     npy_data = True
     ################### DATASETS ###################
+    experiment_num = 1  # In case we want to train different configuration at the same day.
     retrieve_last_training_session = False
     multiple_data_sets_training_mode = True
     training_sets = EEG_DATASETS
@@ -327,7 +328,27 @@ if __name__ == "__main__":
         multi_class = True if task == 'multiclass' else False
 
         ################## DESTINATION PATHS ###################
-        full_path = os.path.join(date_dir, data_set)
+        def get_experiment_path(base_path, data_set):
+            """Automatically determine the next available experiment number."""
+
+            # Get today's date folder
+            today = datetime.today().strftime('%Y-%m-%d')
+            date_dir = os.path.join(base_path, today)
+            os.makedirs(date_dir, exist_ok=True)  # Ensure the date folder exists
+
+            # Find the next available experiment number
+            experiment_num = 1
+            while os.path.exists(os.path.join(date_dir, f"{data_set}_{experiment_num}")):
+                experiment_num += 1  # Increment until a free folder is found
+
+            # Create the final path for this experiment
+            full_path = os.path.join(date_dir, f"{data_set}_{experiment_num}")
+            os.makedirs(full_path, exist_ok=True)
+
+            return full_path
+
+        full_path = get_experiment_path(date_dir, data_set)
+        # full_path = os.path.join(date_dir, data_set + f'_{experiment_num}')
         os.makedirs(full_path, exist_ok=True)
 
         checkpoint_path = os.path.join(full_path, "checkpoint_epoch.pth")

@@ -633,21 +633,27 @@ if __name__ == '__main__':
         'multi_class': 'multi_class',
         # binary class' is determined by the number of data classes. Multilabel class' is concluded.
         'fuser_name': 'ConvFuser2',
-        'blocks': (3, 4, 6, 3),  # The ResNet skip connection blocks
-        'transformer_variant': 'performer',  # Choose transformer variant
-        'use_learnable_pe': True,  # Use learnable positional encoding
-        'aggregator': 'conv',  # Use aggregation
+        'blocks': (3, 4, 5, 3),
+        'transformer_variant': 'performer',
+        'use_learnable_pe': True,
+        'aggregator': 'conv',
+
+        # Training parameters
         'num_epochs': 50,
-        'd_model': 512,
-        'nhead': 8,  # # transformer heads
-        'num_layers': 6,  # transformer layers
-        'batch_size': 16,
-        'dropout': 0.35,
-        'learning_rate': 1e-4,
-        'weight_decay': 1e-4,
-        'time_scaler': 1,  # The portion of T for conv output time-series latent representative
+        'batch_size': 8,
+        'learning_rate': 5e-5,
+        'weight_decay': 5e-4,
+
+        # Model parameters
+        'd_model': 256,
+        'nhead': 8,
+        'num_layers': 4,
+        'dropout': 0.28,
+        'time_scaler': 1,
+
+        # Evaluation parameters
         'prediction_threshold': 0.5,
-        'split_rates': (0.2, 0.3)
+        'split_rates': (0.3, 0.5)  # Train/Validation/Test split
     }
 
     # Define input dimensions. config['input_shape'] is calculated based on concreate data set inside
