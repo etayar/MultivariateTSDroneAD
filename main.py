@@ -287,7 +287,7 @@ if __name__ == "__main__":
     else:
 
         EEG_DATASETS = {
-            'CHBMIT2_1': 'binary'
+            'CHBMIT2': 'binary'
         }
     csv_data = False
     npy_data = True
