@@ -6,7 +6,7 @@ from src.training.train import Trainer
 from src.multivariate_fusion_anomaly_detection import build_model
 import torch
 from torch import nn
-from torch.optim.lr_scheduler import SequentialLR, LinearLR, CosineAnnealingLR
+from torch.optim.lr_scheduler import SequentialLR, LinearLR, CosineAnnealingWarmRestarts
 
 
 def save_metrics(metrics_history, metrics_file_path):
@@ -126,7 +126,7 @@ def main(model_config, by_checkpoint=False, by_best_model=True):
             optimizer,
             schedulers=[
                 LinearLR(optimizer, start_factor=0.1, total_iters=warmup_epochs),  # Gradual LR increase
-                CosineAnnealingLR(optimizer, T_max=num_epochs - warmup_epochs, eta_min=1e-6)
+                CosineAnnealingWarmRestarts(optimizer, T_0=5, T_mult=2, eta_min=1e-6)
             ],
             milestones=[warmup_epochs]
         )
@@ -189,7 +189,7 @@ def main(model_config, by_checkpoint=False, by_best_model=True):
             optimizer,
             schedulers=[
                 LinearLR(optimizer, start_factor=0.1, total_iters=warmup_epochs),  # Gradual LR increase
-                CosineAnnealingLR(optimizer, T_max=num_epochs - warmup_epochs, eta_min=1e-6)
+                CosineAnnealingWarmRestarts(optimizer, T_0=5, T_mult=2, eta_min=1e-6)
             ],
             milestones=[warmup_epochs]
         )
@@ -208,7 +208,7 @@ def main(model_config, by_checkpoint=False, by_best_model=True):
             optimizer,
             schedulers=[
                 LinearLR(optimizer, start_factor=0.1, total_iters=warmup_epochs),  # Gradual LR increase
-                CosineAnnealingLR(optimizer, T_max=num_epochs - warmup_epochs, eta_min=1e-6)
+                CosineAnnealingWarmRestarts(optimizer, T_0=5, T_mult=2, eta_min=1e-6)
             ],
             milestones=[warmup_epochs]
         )
@@ -337,33 +337,43 @@ if __name__ == "__main__":
         ########################################################
 
         config = {
+            # Data paths
             'csv_data': csv_data,
             'npy_data': npy_data,
-            'normal_path': normal_path,  # path to data source
-            'abnormal_path': abnormal_path,  # path to data source
-            'checkpoint_epoch_path': checkpoint_path,  # path to data destination
-            'best_model_path': best_model_path,  # path to data destination
-            'previous_dataset_path': previous_dataset_path,  # path to data source
+            'normal_path': normal_path,
+            'abnormal_path': abnormal_path,
+            'checkpoint_epoch_path': checkpoint_path,
+            'best_model_path': best_model_path,
+            'previous_dataset_path': previous_dataset_path,
+
+            # Results storage
             'training_res': training_res,
             'test_res': test_res,
+
+            # Model structure
             'multi_class': multi_class,
-            # binary class' is determined by the number of data classes. Multilabel class' is concluded.
             'fuser_name': 'ConvFuser2',
-            'blocks': (3, 4, 5, 3),  # The ResNet skip connection blocks
-            'transformer_variant': 'performer',  # Choose transformer variant
-            'use_learnable_pe': True,  # Use learnable positional encoding
-            'aggregator': 'conv',  # Use aggregation
+            'blocks': (3, 4, 5, 3),
+            'transformer_variant': 'performer',
+            'use_learnable_pe': True,
+            'aggregator': 'conv',
+
+            # Training parameters
             'num_epochs': 50,
-            'd_model': 256,
-            'nhead': 8,  # # transformer heads
-            'num_layers': 4,  # transformer layers
             'batch_size': 8,
-            'dropout': 0.25,
             'learning_rate': 5e-5,
             'weight_decay': 5e-4,
-            'time_scaler': 1,  # The portion of T for conv output time-series latent representative
+
+            # Model parameters
+            'd_model': 256,
+            'nhead': 8,
+            'num_layers': 4,
+            'dropout': 0.28,
+            'time_scaler': 1,
+
+            # Evaluation parameters
             'prediction_threshold': 0.5,
-            'split_rates': (0.3, 0.5)
+            'split_rates': (0.3, 0.5)  # Train/Validation/Test split
         }
 
         print(
